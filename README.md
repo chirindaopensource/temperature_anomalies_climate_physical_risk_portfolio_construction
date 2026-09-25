@@ -3331,4 +3331,4 @@ For the implementation itself:
 
 ---
 
-*This README was generated from the draft notebook `temperature_anomalies_climate_physical_risk_portfolio_construction_draft.ipynb`
+*This README was generated from the draft notebook `temperature_anomalies_climate_physical_risk_portfolio_construction_draft.ipynb`*
