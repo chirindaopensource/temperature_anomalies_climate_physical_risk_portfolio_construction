@@ -1,0 +1,3297 @@
+{
+  "study_metadata": {
+    "title": "Temperature Anomalies and Climate Physical Risk in Portfolio Construction",
+    "tag": "v1.0-reproduction",
+    "reference_hardware": {
+      "cpu": "Intel Core i5",
+      "ram_gb": 16,
+      "os": "Windows 10 Pro",
+      "ide": "PyCharm 2025.2.3"
+    },
+    "reference_environment": {
+      "software_libraries_to_pin": [
+        "numpy",
+        "pandas",
+        "scikit-learn",
+        "scipy",
+        "matplotlib",
+        "statsmodels",
+        "pyarrow"
+      ],
+      "runtime_reference_seconds_per_month": 217.39
+    },
+    "authors": [
+      "Michele Azzone",
+      "Carlo Bechi",
+      "Gabriele Sbaiz"
+    ],
+    "affiliations": {
+      "Michele Azzone": "Politecnico di Milano, Via Bonardi 9, Milano 20149, Italy",
+      "Carlo Bechi": "Politecnico di Milano, Via Bonardi 9, Milano 20149, Italy",
+      "Gabriele Sbaiz": "University of Trieste, Via A. Valerio 4/1, Trieste 34127, Italy"
+    },
+    "corresponding_author_email": "michele.azzone@polimi.it",
+    "keywords": [
+      "Climate Aware Portfolio Optimization",
+      "Physical Climate Risk",
+      "Temperature Anomalies",
+      "Climate Change"
+    ],
+    "analysis_anchor_date": "2020-01-01",
+    "_meta": {
+      "title": "Temperature Anomalies and Climate Physical Risk in Portfolio Construction — Study Configuration",
+      "paper_reference": "Azzone, M., Bechi, C., & Sbaiz, G. (2026). Temperature Anomalies and Climate Physical Risk in Portfolio Construction. arXiv preprint arXiv:2604.11143.",
+      "arxiv_id": "2604.11143",
+      "url": "https://arxiv.org/abs/2604.11143",
+      "author": "CS Chirinda",
+      "license": "MIT",
+      "version": "1.0.0",
+      "source": "study inputs specification",
+      "consumer": "run_research_pipeline(config=...) (Task 40 of the notebook)"
+    },
+    "config_checksum_sha256": "9561d8123f18850401d6a220104a618455ee7f3e0672b710f7597f52c0658931"
+  },
+  "global_design_constants": {
+    "extreme_event": {
+      "threshold": 2,
+      "operator": "strict_greater_than",
+      "tail": "positive_only",
+      "gaussian_upper_tail_probability_at_tau": 0.0228,
+      "indicator_values": [
+        0,
+        1
+      ]
+    },
+    "extreme_threshold_tau": 2,
+    "threshold_operator": "strict_greater_than",
+    "anomaly_direction": "positive_only",
+    "windows": {
+      "full_sample": {
+        "start": "1940-01-01",
+        "end": "2025-04-30",
+        "months": 1024
+      },
+      "baseline": {
+        "start": "1960-01-01",
+        "end": "1990-12-31",
+        "obs_per_calendar_month": 31
+      },
+      "frechet_hoeffding_average": {
+        "start": "1940-01-01",
+        "end": "2020-12-31",
+        "months": 972
+      },
+      "return_regression": {
+        "start": "2004-01-01",
+        "end": "2025-04-01",
+        "months": 256
+      },
+      "backtest": {
+        "start": "2020-01-01",
+        "end": "2025-04-30",
+        "months": 64
+      },
+      "backtest_in_sample": {
+        "start": "2015-01-01",
+        "months": 60,
+        "length_years": 5
+      },
+      "logit_restricted_fit": {
+        "end": "2019-12-31",
+        "start": "1940-01-01"
+      }
+    },
+    "geographic_scope": {
+      "continents_included": [
+        "North America",
+        "South America",
+        "Europe",
+        "Africa",
+        "Asia",
+        "Oceania"
+      ],
+      "continents_excluded": [
+        "Antarctica"
+      ],
+      "number_of_continents_K": 6,
+      "number_of_calendar_months": 12
+    },
+    "portfolio_universe_and_mechanics": {
+      "portfolio_universe_size_N": 120,
+      "active_weight_truncation": 0.001,
+      "risk_free_rate_for_sharpe_sortino": 0.0,
+      "rebalance_frequency": "monthly_first_business_day",
+      "rebalance_calendar_market": "global_intersection",
+      "transaction_cost_accounting": "excluded",
+      "bid_ask_spread_accounting": "excluded",
+      "rebalance_cost_accounting": "excluded",
+      "short_selling": "excluded",
+      "risk_free_allocation_in_portfolio": "excluded",
+      "flexibility_annotation": "risk_free_and_short_selling_can_be_added"
+    },
+    "annualisation_convention": {
+      "cagr_exponent": "12_over_number_of_months",
+      "sharpe_annualisation_factor": 12.0,
+      "sortino_annualisation_factor": 12.0,
+      "sortino_downside_deviation_definition": "std_of_negative_excess_returns_only",
+      "max_drawdown_definition": "peak_to_trough_maximum_decline"
+    },
+    "multiple_testing_policy": {
+      "correction_method": "none",
+      "family_definition": "sector_x_continent_pairs_within_table_2_and_table_3",
+      "alpha_levels": [
+        0.1,
+        0.05,
+        0.01
+      ],
+      "sensitivity_options": [
+        "none",
+        "bonferroni",
+        "holm",
+        "benjamini_hochberg_yekutieli"
+      ]
+    }
+  },
+  "raw_input_schemas": {
+    "temperature_panel": {
+      "grain": "continent x year_month",
+      "table_name": "df_temperature_raw",
+      "primary_key": [
+        "continent",
+        "year_month"
+      ],
+      "source": "Our World in Data (Footnote 4 §2 lead)",
+      "upstream_institutions": [
+        "IPCC",
+        "NASA",
+        "World Bank"
+      ],
+      "coverage": [
+        "1940-01-01",
+        "2025-04-30"
+      ],
+      "frequency": "monthly",
+      "columns": {
+        "continent": "object (categorical, 6 values)",
+        "year_month": "datetime64[ns] (first of month, UTC)",
+        "calendar_month": "int64 in [1..12]",
+        "temperature_celsius": "float64",
+        "in_baseline_window": "bool",
+        "spatial_aggregation_method": "object",
+        "measurement_convention": "object",
+        "source_snapshot_date": "datetime64[ns]",
+        "data_quality_flag": "object"
+      },
+      "missing_data_policy": {
+        "primary": "drop_row_with_flag",
+        "sensitivity": "linear_interpolation_within_1_month"
+      }
+    },
+    "return_panel": {
+      "grain": "firm x month",
+      "table_name": "df_firm_total_returns_raw",
+      "primary_key": [
+        "firm_id",
+        "year_month"
+      ],
+      "source": "MSCI World index provider (commercial)",
+      "coverage": [
+        "2004-01-01",
+        "2025-04-01"
+      ],
+      "columns": {
+        "firm_id": "object",
+        "year_month": "datetime64[ns]",
+        "total_return": "float64",
+        "total_return_usd": "float64",
+        "market_cap_usd": "float64",
+        "fx_rate_used": "float64",
+        "currency": "object (ISO-4217)",
+        "corporate_action_adjustment_method": "object",
+        "dividend_treatment": "object",
+        "is_revised": "bool",
+        "revision_effective_date": "datetime64[ns]"
+      }
+    },
+    "market_factor": {
+      "table_name": "df_market_factor_raw",
+      "grain": "month",
+      "primary_key": [
+        "year_month"
+      ],
+      "columns": {
+        "year_month": "datetime64[ns]",
+        "index_name": "object",
+        "R_MKT_t": "float64",
+        "currency": "object (ISO-4217)",
+        "index_return_type": "object",
+        "index_version": "object",
+        "vendor": "object"
+      }
+    },
+    "riskfree_rate": {
+      "table_name": "df_riskfree_raw",
+      "grain": "month",
+      "primary_key": [
+        "year_month"
+      ],
+      "columns": {
+        "year_month": "datetime64[ns]",
+        "R_f_t": "float64",
+        "instrument": "object",
+        "compounding_convention": "object",
+        "day_count_basis": "object",
+        "annualisation_factor": "float64"
+      }
+    },
+    "firm_fundamentals": {
+      "table_name": "df_firm_fundamentals_raw",
+      "grain": "firm x fiscal_year",
+      "primary_key": [
+        "firm_id",
+        "fiscal_year"
+      ],
+      "columns": {
+        "firm_id": "object",
+        "fiscal_year": "int64",
+        "fiscal_year_end_date": "datetime64[ns]",
+        "tangible_assets_usd": "float64",
+        "tangible_assets_original_currency": "float64",
+        "revenue_usd": "float64",
+        "revenue_original_currency": "float64",
+        "reporting_currency": "object (ISO-4217)",
+        "fx_rate_used": "float64",
+        "fx_rate_date": "datetime64[ns]",
+        "accounting_standard": "object",
+        "tangible_assets_interpretation": "object",
+        "is_restated": "bool",
+        "restatement_effective_date": "datetime64[ns]",
+        "effective_date": "datetime64[ns]"
+      }
+    },
+    "segment_revenue": {
+      "table_name": "df_segment_revenue_raw",
+      "grain": "firm x fiscal_year x segment",
+      "primary_key": [
+        "firm_id",
+        "fiscal_year",
+        "segment_label"
+      ],
+      "source": "IFRS 8 or ASC 280 disclosures",
+      "columns": {
+        "firm_id": "object",
+        "fiscal_year": "int64",
+        "segment_label": "object (raw firm wording)",
+        "segment_revenue_usd": "float64",
+        "segment_revenue_original_currency": "float64",
+        "reporting_currency": "object",
+        "fx_rate_used": "float64",
+        "fx_rate_date": "datetime64[ns]",
+        "disclosure_standard": "object",
+        "is_unallocated": "bool",
+        "is_restated": "bool",
+        "effective_date": "datetime64[ns]"
+      },
+      "reconciliation_tolerance_pct": 5.0,
+      "residual_revenue_rule": "proportional_to_disclosed_segments",
+      "residual_tolerance_applied_when": "abs(sum_segment_rev - revenue) / revenue > 0.05"
+    },
+    "firm_metadata": {
+      "table_name": "df_firm_metadata_raw",
+      "grain": "firm",
+      "primary_key": [
+        "firm_id"
+      ],
+      "columns": {
+        "firm_id": "object",
+        "firm_name": "object",
+        "ticker": "object",
+        "sector": "object (categorical)",
+        "sector_classification_scheme": "object",
+        "sector_classification_version": "object",
+        "country_of_domicile": "object (ISO-3166)",
+        "hq_continent": "object (categorical, 6 values)",
+        "secondary_hq_continent": "object or null",
+        "is_financial_sector": "bool"
+      }
+    },
+    "index_membership": {
+      "table_name": "df_index_membership_raw",
+      "grain": "firm x snapshot_date x index_name",
+      "primary_key": [
+        "firm_id",
+        "as_of_date",
+        "index_name"
+      ],
+      "columns": {
+        "firm_id": "object",
+        "as_of_date": "datetime64[ns]",
+        "is_constituent": "bool",
+        "index_name": "object",
+        "vendor": "object",
+        "announcement_date": "datetime64[ns]",
+        "effective_date": "datetime64[ns]"
+      },
+      "required_snapshot_dates": [
+        "2020-01-01",
+        "2025-01-01"
+      ],
+      "intersection_rule": "AND",
+      "post_filter": "sufficient_data_available"
+    },
+    "frozen_universe_120": {
+      "table_name": "df_universe_120_raw",
+      "grain": "firm",
+      "primary_key": [
+        "firm_id"
+      ],
+      "columns": {
+        "firm_id": "object",
+        "region": "object (categorical, 4 values)",
+        "regional_quota_target": "int64",
+        "rank_by_market_cap_within_region": "int64",
+        "selection_method": "object",
+        "selection_seed": "int64 or null",
+        "analysis_anchor_date": "datetime64[ns]",
+        "market_cap_usd_at_anchor": "float64",
+        "inclusion_reason": "object"
+      },
+      "regional_quotas": {
+        "North America": {
+          "weight_pct": 45.0,
+          "asset_count": 54
+        },
+        "Europe": {
+          "weight_pct": 25.0,
+          "asset_count": 30
+        },
+        "Asia": {
+          "weight_pct": 25.0,
+          "asset_count": 30
+        },
+        "Oceania": {
+          "weight_pct": 5.0,
+          "asset_count": 6
+        }
+      }
+    },
+    "segment_to_continent_map": {
+      "table_name": "df_segment_to_continent_map_raw",
+      "grain": "segment_label_normalized x mapped_continent",
+      "primary_key": [
+        "segment_label_normalized",
+        "mapped_continent"
+      ],
+      "columns": {
+        "segment_label_normalized": "object",
+        "mapped_continent": "object (categorical, 6 values)",
+        "allocation_weight": "float64",
+        "is_multi_continent": "bool",
+        "mapping_rule": "object",
+        "mapping_notes": "object",
+        "mapping_reference": "object"
+      },
+      "default_mappings": {
+        "americas": [
+          [
+            "North America",
+            0.5
+          ],
+          [
+            "South America",
+            0.5
+          ]
+        ],
+        "north america": [
+          [
+            "North America",
+            1.0
+          ]
+        ],
+        "united states": [
+          [
+            "North America",
+            1.0
+          ]
+        ],
+        "latin america": [
+          [
+            "South America",
+            1.0
+          ]
+        ],
+        "south america": [
+          [
+            "South America",
+            1.0
+          ]
+        ],
+        "europe": [
+          [
+            "Europe",
+            1.0
+          ]
+        ],
+        "emea": [
+          [
+            "Europe",
+            0.9
+          ],
+          [
+            "Africa",
+            0.1
+          ]
+        ],
+        "africa": [
+          [
+            "Africa",
+            1.0
+          ]
+        ],
+        "middle east and africa": [
+          [
+            "Africa",
+            1.0
+          ]
+        ],
+        "asia": [
+          [
+            "Asia",
+            1.0
+          ]
+        ],
+        "asia pacific": [
+          [
+            "Asia",
+            0.9
+          ],
+          [
+            "Oceania",
+            0.1
+          ]
+        ],
+        "apac": [
+          [
+            "Asia",
+            0.9
+          ],
+          [
+            "Oceania",
+            0.1
+          ]
+        ],
+        "oceania": [
+          [
+            "Oceania",
+            1.0
+          ]
+        ],
+        "australia and new zealand": [
+          [
+            "Oceania",
+            1.0
+          ]
+        ],
+        "rest of world": "proportional_to_other_segments",
+        "other": "proportional_to_other_segments",
+        "corporate": "to_hq_continent"
+      }
+    },
+    "fx_rates": {
+      "table_name": "df_fx_rates_raw",
+      "grain": "date x from_currency x to_currency",
+      "primary_key": [
+        "date",
+        "from_currency",
+        "to_currency"
+      ],
+      "columns": {
+        "date": "datetime64[ns]",
+        "from_currency": "object (ISO-4217)",
+        "to_currency": "object (ISO-4217)",
+        "rate": "float64",
+        "source": "object",
+        "quote_type": "object"
+      }
+    },
+    "trading_calendar": {
+      "table_name": "df_trading_calendar_raw",
+      "grain": "date x market",
+      "primary_key": [
+        "date",
+        "market"
+      ],
+      "columns": {
+        "date": "datetime64[ns]",
+        "market": "object",
+        "is_trading_day": "bool",
+        "is_month_first_business_day": "bool",
+        "is_month_last_business_day": "bool",
+        "calendar_reference": "object"
+      }
+    }
+  },
+  "data_preprocessing_parameters": {
+    "temperature_standardization": {
+      "baseline": "1960-1990",
+      "transform_name": "seasonal_z_score",
+      "grouping_variable": "calendar_month",
+      "mean_estimator": "sample_mean",
+      "std_estimator": "sample_std_dev",
+      "std_ddof_convention": 1,
+      "baseline_observation_count_per_cell": 31,
+      "baseline_endpoint_inclusion": "inclusive",
+      "source_rows_used": "in_baseline_window == True"
+    },
+    "temperature_thresholding": {
+      "tau": 2,
+      "threshold_operator": "strict_greater_than",
+      "indicator_values": [
+        0,
+        1
+      ]
+    },
+    "logistic_regression": {
+      "link": "logit",
+      "time_trend": "quadratic",
+      "time_index_origin": "1940-01-01",
+      "time_index_units": "months",
+      "restricted_fit_end": "2019-12-31",
+      "model_class": "logistic_regression",
+      "trend_order": 2,
+      "polynomial_basis_terms": [
+        "intercept",
+        "t",
+        "t^2"
+      ],
+      "time_index_definition": "months_since_1940_01",
+      "estimation_method": "maximum_likelihood",
+      "numerical_solver": "irls",
+      "convergence_tolerance": 1e-08,
+      "max_iterations": 100,
+      "fit_per_continent": true,
+      "full_sample_fit_window": [
+        "1940-01-01",
+        "2025-04-30"
+      ],
+      "restricted_sample_fit_window": [
+        "1940-01-01",
+        "2019-12-31"
+      ]
+    },
+    "exposure_mapping": {
+      "asset_intensity": {
+        "numerator": "tangible_assets_usd",
+        "denominator": "revenue_usd",
+        "sector_benchmarks": {
+          "Real Estate": 10.6,
+          "Retailers": 0.6
+        }
+      },
+      "climate_normalized_weight_formula": {
+        "formula": "α_k(w) = Σ_i w_i · AI_i · S_{i,k} / Σ_k Σ_i w_i · AI_i · S_{i,k}",
+        "description": "alpha_k(w), climate normalized weight"
+      },
+      "normalized_weights": {
+        "normalization": "revenue_share_unit_sum",
+        "constraint": "sum_to_one"
+      },
+      "asset_intensity_definition": "tangible_assets_over_revenue",
+      "asset_intensity_attribution": "Azzone et al. (2026b)",
+      "tangible_assets_interpretation": "narrow_excludes_intangibles_and_goodwill",
+      "revenue_interpretation": "total_revenue",
+      "revenue_geography_granularity": "continent",
+      "national_extension_annotation": "recommended",
+      "normalization_invariant": "Σ_k α_k(w) = 1",
+      "country_mapping_rule_for_segments": "df_segment_to_continent_map_raw",
+      "residual_revenue_assignment": "proportional_to_disclosed_segments"
+    },
+    "jaccard_distance": {
+      "formula": "one_minus_sum_min_over_sum_max",
+      "domain": "portfolio_weight_vectors"
+    },
+    "return_aggregation": {
+      "return_type": "total_return",
+      "total_return_components": [
+        "price_changes",
+        "dividends",
+        "stock_splits",
+        "corporate_actions"
+      ],
+      "aggregation_weight": "market_capitalization_weighted",
+      "sector_assignment_rule": "single_primary_sector",
+      "survivorship_bias_control": {
+        "data_sufficiency": true,
+        "constituency_2020": true,
+        "constituency_2025": true
+      },
+      "exclusion_rationale": "geographic_exposure_indeterminable",
+      "number_of_sectors_in_analysis": 23,
+      "fx_conversion_before_aggregation": true
+    },
+    "covariance_preprocessing": {
+      "estimator": "ledoit_wolf_shrinkage",
+      "shrinkage_formula": "Σ = (1 - δ*) S + δ* F",
+      "shrinkage_reference": "Ledoit and Wolf (2004)",
+      "shrinkage_target_F": "scaled_identity",
+      "condition_number_ceiling": 1000,
+      "condition_number_reference": "Won et al. (2013)",
+      "estimation_frequency": "daily",
+      "estimation_window": "rolling_5_year"
+    }
+  },
+  "module_M1_climate_signal": {
+    "standardization": {
+      "window": "1960-1990"
+    },
+    "extreme_threshold_tau": 2,
+    "baseline_window": [
+      "1960-01-01",
+      "1990-12-31"
+    ],
+    "logit_link": "logit",
+    "trend_order": 2,
+    "estimation_method": "maximum_likelihood",
+    "per_continent": true,
+    "outputs": [
+      "Z_k_t",
+      "B_k_t",
+      "p_hat_k_t"
+    ],
+    "diagnostic_metrics": [
+      "auroc",
+      "aupr",
+      "aupr_random_baseline"
+    ]
+  },
+  "module_M2_dependence": {
+    "frechet_hoeffding": {
+      "lower_bound_formula": "rho_min = (max(0, p1+p2-1) - p1*p2) / (sqrt(p1(1-p1))*sqrt(p2(1-p2)))",
+      "upper_bound_formula": "rho_max = (min(p1, p2) - p1*p2) / (sqrt(p1(1-p1))*sqrt(p2(1-p2)))",
+      "marginal_averaging_window": "1940-2020",
+      "auxiliary_variable_distribution": "uniform_0_1",
+      "marginal_representation": "time_averaged_probability",
+      "perfect_correlation_condition": "p1 = p2",
+      "perfect_anticorrelation_condition": "p1 = 1 - p2",
+      "higher_order_constraints_available": false,
+      "closed_form_threshold_variable_count": 4,
+      "reference_for_constraints": "Huber and Marić (2015, 2019)",
+      "final_correlation_used_in_CEV": "empirical_pearson_held_constant"
+    },
+    "correlation_measure": "pearson",
+    "pairing_scope": "all_unordered_pairs",
+    "total_pair_count": 15,
+    "expected_value_range": [
+      0.0,
+      0.48
+    ],
+    "expected_sign": "positive"
+  },
+  "module_M3_regressions": {
+    "specification_1_extended_capm": {
+      "factors": [
+        "mkt",
+        "climate"
+      ],
+      "dependent_variable": "R_{s,k,t} - R_{f,t}",
+      "covariates": [
+        "intercept",
+        "R_{MKT,t} - R_{f,t}",
+        "B_{k,t}"
+      ],
+      "parameter_of_interest": "gamma_{s,k}",
+      "estimator": "OLS",
+      "standard_error_type": "HAC_newey_west",
+      "HAC_reference": "Newey and West (1986)",
+      "HAC_lag_rule": "floor(4*(T/100)^(2/9))",
+      "HAC_kernel": "bartlett",
+      "significance_levels": [
+        0.1,
+        0.05,
+        0.01
+      ],
+      "reporting_p_value_threshold": 0.1
+    },
+    "specification_2_sector_panel": {
+      "effects": [
+        "month",
+        "continent"
+      ],
+      "dependent_variable": "R_{s,k,t} - R_{f,t}",
+      "parameter_of_interest": "gamma_s",
+      "pooling_scope": "within_sector_across_continents",
+      "fixed_effects": {
+        "month": {
+          "type": "dummy_variables",
+          "count": 12
+        },
+        "continent": {
+          "type": "dummy_variables",
+          "count": 6
+        }
+      },
+      "estimator": "panel_OLS_with_within_transformation",
+      "standard_error_type": "HAC_newey_west",
+      "significance_levels": [
+        0.1,
+        0.05,
+        0.01
+      ],
+      "reporting_p_value_threshold": 0.1
+    },
+    "specification_3_global_panel": {
+      "effects": [
+        "month",
+        "continent"
+      ],
+      "standard_errors": "Driscoll_Kraay",
+      "standard_errors_sensitivity": "stacked_row_Newey_West",
+      "dependent_variable": "R_{s,k,t} - R_{f,t}",
+      "parameter_of_interest": "Gamma_global",
+      "pooling_scope": "all_sectors_and_all_continents",
+      "fixed_effects": {
+        "month": 12,
+        "continent": 6
+      },
+      "standard_error_type": "HAC_newey_west",
+      "expected_value": -0.003,
+      "expected_p_value": 0.0096
+    },
+    "HAC_settings": {
+      "estimator": "Driscoll-Kraay grouped-sum HAC (Bartlett kernel)",
+      "lag_rule": "floor(4*(T_months/100)^(2/9))",
+      "sensitivity_estimator": "stacked-row Newey-West HAC",
+      "sensitivity_lag_rule": "floor(4*(T_rows/100)^(2/9))"
+    },
+    "financial_exclusion_sectors": [
+      "Banks",
+      "Financial",
+      "Insurance"
+    ],
+    "global_gamma_reference": {
+      "value": -0.003,
+      "p_value": 0.0096
+    },
+    "sector_significance_count": {
+      "significant_sectors": 17,
+      "total_sectors": 23
+    }
+  },
+  "module_M5_metrics": {
+    "CRE_formula": {
+      "formula": "CRE(w,t) = Σ_k α_k(w) · p_{k,t}"
+    },
+    "CEV_formula_variance_form": {
+      "formula": "CEV(w,t) = Σ_k α_k^2 Var(B_{k,t}) + 2 Σ_{k<j} α_k α_j Cov(B_{k,t}, B_{j,t})"
+    },
+    "covariance_formula": {
+      "formula": "ρ_{k,j} sqrt(Var(B_k) Var(B_j))"
+    },
+    "CEV_formula_expanded": {
+      "formula": "CEV(w,t) = Σ_k α_k^2 p_{k,t}(1-p_{k,t}) + 2 Σ_{k<j} α_k α_j ρ_{k,j} sqrt(p_{k,t}(1-p_{k,t}) p_{j,t}(1-p_{j,t}))"
+    },
+    "idiosyncratic_limit": {
+      "form": "uniform_probability_diagonal_term",
+      "formula": "1/K · p(1-p) → 0 as K → ∞"
+    },
+    "systemic_limit": {
+      "form": "uniform_correlation_limit",
+      "formula": "(1 - 1/K) · ρ p(1-p) → ρ p(1-p) as K → ∞",
+      "limit_as_K_to_infinity": "rho * p * (1 - p)"
+    },
+    "CRE_interpretation": "baseline_physical_risk",
+    "bernoulli_variance_formula": "p_{k,t}(1 - p_{k,t})",
+    "decomposition_terms": {
+      "idiosyncratic": "Σ_k α_k^2 p_{k,t}(1-p_{k,t})",
+      "systemic": "2 Σ_{k<j} α_k α_j Cov(B_{k,t}, B_{j,t})"
+    },
+    "herfindahl_minimum_condition": "α_k = 1/K for all k",
+    "systemic_floor": "ρ p(1-p)",
+    "vectorization_required": true,
+    "figure_5_strategies": [
+      "MSCI World Portfolio",
+      "Equally Weighted Continent Portfolio",
+      "Inverse Risk Weighted Portfolio"
+    ],
+    "figure_6_correlation_scenarios": [
+      "Pearson Correlation",
+      "Maximum Bound Correlation",
+      "Minimum Bound Correlation"
+    ],
+    "appendix_B_alternative_objective": "CRE",
+    "figure_5_crossover_year_approx": 2010,
+    "figure_5_crossover_rationale": "p_k_above_0_5_reduces_bernoulli_variance"
+  },
+  "module_M6_optimization": {
+    "objective_functions": [
+      {
+        "id": "f1",
+        "name": "expected_return_negated",
+        "formula": "f1(w) = - w^T r",
+        "direction": "minimize"
+      },
+      {
+        "id": "f2",
+        "name": "market_variance",
+        "formula": "f2(w) = w^T Σ w",
+        "direction": "minimize"
+      },
+      {
+        "id": "f3_primary",
+        "name": "Climate_Exposure_Volatility",
+        "formula": "f3(w) = CEV(w)",
+        "direction": "minimize"
+      },
+      {
+        "id": "f3_appendix_B",
+        "name": "Climate_Risk_Exposure",
+        "formula": "f3(w) = CRE(w)",
+        "direction": "minimize"
+      }
+    ],
+    "constraints": {
+      "budget_constraint": "Σ_{i=1}^{120} w_i = 1",
+      "long_only_constraint": "w_i >= 0 for all i",
+      "no_risk_free_asset": true,
+      "no_short_selling": true
+    },
+    "universe_construction": {
+      "size": 120,
+      "quotas": [
+        {
+          "region": "North America",
+          "weight_pct": 0.45,
+          "count": 54
+        },
+        {
+          "region": "Europe",
+          "weight_pct": 0.25,
+          "count": 30
+        },
+        {
+          "region": "Asia",
+          "weight_pct": 0.25,
+          "count": 30
+        },
+        {
+          "region": "Oceania",
+          "weight_pct": 0.05,
+          "count": 6
+        }
+      ],
+      "anchor_date": "2020-01-01",
+      "cap_snapshot": "last_observation_before_anchor",
+      "return_gap_rule": "exclude_firm_on_two_or_more_consecutive_missing_months",
+      "membership_rule": "msci_world_constituent_at_start_2020_and_2025",
+      "sampling_method": "stratified",
+      "stratification_variables": [
+        "market_capitalization",
+        "headquarters_location"
+      ],
+      "regional_quotas": {
+        "North America": {
+          "weight_pct": 45.0,
+          "asset_count": 54
+        },
+        "Europe": {
+          "weight_pct": 25.0,
+          "asset_count": 30
+        },
+        "Asia": {
+          "weight_pct": 25.0,
+          "asset_count": 30
+        },
+        "Oceania": {
+          "weight_pct": 5.0,
+          "asset_count": 6
+        }
+      },
+      "within_region_selection_rule": "top_cap_within_region"
+    },
+    "covariance_estimation": {
+      "method": "ledoit_wolf_shrinkage",
+      "target": "scaled_identity",
+      "condition_number_ceiling": 1000,
+      "shrinkage_step": 0.001,
+      "shrinkage_formula": "Σ = (1 - δ*) S + δ* F",
+      "estimation_frequency": "daily",
+      "estimation_window": "rolling_5_year"
+    },
+    "active_weight_threshold": 0.001,
+    "mopso_hyperparameter_grid_search": {
+      "Iter_values": [
+        200,
+        300,
+        400
+      ],
+      "N_pop_values": [
+        200,
+        500,
+        600
+      ],
+      "N_rep_values": [
+        100,
+        200,
+        400
+      ],
+      "selected": {
+        "Iter": 300,
+        "N_pop": 500,
+        "N_rep": 400
+      }
+    },
+    "expected_return_estimation": {
+      "estimator": "sample_mean_of_monthly_returns",
+      "frequency": "monthly",
+      "window_length_years": 5,
+      "lookback_type": "rolling"
+    },
+    "active_weight_analysis": {
+      "average_active_three_objective": 22,
+      "low_variance_active_count": 55,
+      "mean_variance_only_active_count": 14
+    },
+    "jaccard_distance": {
+      "formula": "d_J(x, y) = 1 - Σ_i min(x_i, y_i) / Σ_i max(x_i, y_i)",
+      "reference": "Kamiura and Sekine (2023)"
+    },
+    "non_overparameterization_remark": true,
+    "stationarity_of_physical_risk": "non_stationary"
+  },
+  "module_M7_scalarization": {
+    "tilt_configurations": {
+      "tilts": [
+        {
+          "label": "Balanced",
+          "a": 0.3333333333333333,
+          "b": 0.3333333333333333,
+          "c": 0.3333333333333333,
+          "strategy": "Equal importance to all objectives"
+        },
+        {
+          "label": "Minimum Risk",
+          "a": 0.0,
+          "b": 0.5,
+          "c": 0.5,
+          "strategy": "Financial and climate risk awareness"
+        },
+        {
+          "label": "Return-oriented",
+          "a": 0.5,
+          "b": 0.25,
+          "c": 0.25,
+          "strategy": "Priority to expected returns"
+        },
+        {
+          "label": "Variance-oriented",
+          "a": 0.25,
+          "b": 0.5,
+          "c": 0.25,
+          "strategy": "Priority to variance minimization"
+        },
+        {
+          "label": "Climate-oriented",
+          "a": 0.25,
+          "b": 0.25,
+          "c": 0.5,
+          "strategy": "Priority to climate risk awareness"
+        },
+        {
+          "label": "Mean-Variance",
+          "a": 0.5,
+          "b": 0.5,
+          "c": 0.0,
+          "strategy": "Traditional Mean-Variance"
+        }
+      ],
+      "Balanced": {
+        "a": 0.3333333333333333,
+        "b": 0.3333333333333333,
+        "c": 0.3333333333333333,
+        "strategy": "Equal importance to all objectives"
+      },
+      "Minimum_Risk": {
+        "a": 0.0,
+        "b": 0.5,
+        "c": 0.5,
+        "strategy": "Financial and climate risk awareness"
+      },
+      "Return_oriented": {
+        "a": 0.5,
+        "b": 0.25,
+        "c": 0.25,
+        "strategy": "Priority to expected returns"
+      },
+      "Variance_oriented": {
+        "a": 0.25,
+        "b": 0.5,
+        "c": 0.25,
+        "strategy": "Priority to variance minimization"
+      },
+      "Climate_oriented": {
+        "a": 0.25,
+        "b": 0.25,
+        "c": 0.5,
+        "strategy": "Priority to climate risk awareness"
+      },
+      "Mean_Variance": {
+        "a": 0.5,
+        "b": 0.5,
+        "c": 0.0,
+        "strategy": "Traditional Mean-Variance"
+      }
+    },
+    "normalization_method": "min_max",
+    "normalization_range": [
+      0.0,
+      1.0
+    ],
+    "aggregation_method": "convex_combination",
+    "weight_constraint": "a + b + c = 1, a, b, c >= 0",
+    "selection_rule": "argmin",
+    "optimization_direction": "minimization",
+    "corner_portfolios": [
+      "minimum_market_variance",
+      "minimum_CEV",
+      "maximum_expected_return"
+    ],
+    "benchmarks": [
+      "market_cap_weighted",
+      "equally_weighted"
+    ]
+  },
+  "module_M8_backtest": {
+    "rolling_window": {
+      "length_years": 5,
+      "months": 60
+    },
+    "metrics": {
+      "names": [
+        "CAGR",
+        "Sharpe",
+        "Sortino",
+        "Maximum Drawdown",
+        "r-CRE",
+        "r-CEV"
+      ]
+    },
+    "strategy_roster": [
+      "Market-Cap Weights",
+      "Equally-Weighted",
+      "Min Market Variance",
+      "Min CEV",
+      "Max Expected Return",
+      "Balanced",
+      "Minimum Risk",
+      "Return-oriented",
+      "Variance-oriented",
+      "Climate-oriented",
+      "Mean-Variance"
+    ],
+    "backtest_window": {
+      "start": "2020-01-01",
+      "end": "2025-04-30",
+      "in_sample_start": "2015-01-01"
+    },
+    "risk_free_rate": 0.0,
+    "rebalance_rule": "monthly_first_business_day",
+    "performance_evaluation": "month_end",
+    "probability_lag": "month_preceding_rebalancing",
+    "expected_return_estimator": "mean_of_monthly_returns_preceding_five_years",
+    "covariance_estimator": "daily_returns_same_five_year_lookback",
+    "realized_metrics": {
+      "r_CRE": "sample_mean_of_monthly_realized_exposure",
+      "r_CEV": "sample_variance_of_monthly_realized_exposure"
+    },
+    "rebalance_calendar_market": "global_intersection",
+    "inputs_refreshed_per_rebalance": {
+      "expected_returns": "5y_mean_of_monthly_returns",
+      "covariance": "ledoit_wolf_daily_5y",
+      "temperature_probabilities": "refit_through_month_t_minus_1",
+      "correlation_matrix": "held_constant_across_backtest",
+      "universe": "held_constant"
+    },
+    "performance_metrics": {
+      "CAGR": {
+        "definition": "compound_annual_growth_rate",
+        "units": "percentage"
+      },
+      "Sharpe": {
+        "definition": "mean_return_divided_by_std_dev",
+        "risk_free_rate": 0.0,
+        "annualisation_factor": 12.0
+      },
+      "Sortino": {
+        "definition": "mean_return_divided_by_downside_deviation",
+        "risk_free_rate": 0.0,
+        "annualisation_factor": 12.0,
+        "reference": "Sortino and Satchell (2001)"
+      },
+      "MaxDrawdown": {
+        "definition": "largest_peak_to_trough_drop",
+        "reference": [
+          "Sortino and Satchell (2001)",
+          "Aprea and Sbaiz (2025)"
+        ]
+      },
+      "r_CRE": {
+        "definition": "sample_mean_of_monthly_realized_exposure",
+        "aggregation_formula": "x_t = Σ_k α_k · B_{k,t}^{realised}; r-CRE = mean_t x_t"
+      },
+      "r_CEV": {
+        "definition": "sample_variance_of_monthly_realized_exposure",
+        "aggregation_formula": "x_t = Σ_k α_k · B_{k,t}^{realised}; r-CEV = var_t x_t"
+      }
+    },
+    "reported_reference_values_table9": {
+      "Market_Cap_Weights": {
+        "CAGR": 0.1575,
+        "Sharpe": 1.041,
+        "Sortino": 1.85,
+        "Drawdown": 0.1478,
+        "r_CRE": 0.714,
+        "r_CEV": 0.1064
+      },
+      "Equally_Weighted": {
+        "CAGR": 0.1749,
+        "Sharpe": 1.153,
+        "Sortino": 1.834,
+        "Drawdown": 0.1672,
+        "r_CRE": 0.724,
+        "r_CEV": 0.1096
+      },
+      "Min_Market_Variance": {
+        "CAGR": 0.142,
+        "Sharpe": 1.282,
+        "Sortino": 2.324,
+        "Drawdown": 0.1147,
+        "r_CRE": 0.762,
+        "r_CEV": 0.1356
+      },
+      "Min_CEV": {
+        "CAGR": 0.1668,
+        "Sharpe": 0.739,
+        "Sortino": 1.207,
+        "Drawdown": 0.4348,
+        "r_CRE": 0.71,
+        "r_CEV": 0.105
+      },
+      "Max_Expected_Return": {
+        "CAGR": 0.0332,
+        "Sharpe": 0.32,
+        "Sortino": 0.674,
+        "Drawdown": 0.6937,
+        "r_CRE": 0.695,
+        "r_CEV": 0.1187
+      },
+      "tilt_1_3_1_3_1_3": {
+        "CAGR": 0.3354,
+        "Sharpe": 1.153,
+        "Sortino": 2.787,
+        "Drawdown": 0.3154,
+        "r_CRE": 0.721,
+        "r_CEV": 0.1048
+      },
+      "tilt_0_1_2_1_2": {
+        "CAGR": 0.1465,
+        "Sharpe": 1.133,
+        "Sortino": 1.304,
+        "Drawdown": 0.1738,
+        "r_CRE": 0.716,
+        "r_CEV": 0.1118
+      },
+      "tilt_1_2_1_4_1_4": {
+        "CAGR": 0.2843,
+        "Sharpe": 0.92,
+        "Sortino": 2.077,
+        "Drawdown": 0.461,
+        "r_CRE": 0.727,
+        "r_CEV": 0.1051
+      },
+      "tilt_1_4_1_2_1_4": {
+        "CAGR": 0.3057,
+        "Sharpe": 1.312,
+        "Sortino": 3.029,
+        "Drawdown": 0.2078,
+        "r_CRE": 0.723,
+        "r_CEV": 0.1078
+      },
+      "tilt_1_4_1_4_1_2": {
+        "CAGR": 0.2847,
+        "Sharpe": 1.045,
+        "Sortino": 2.382,
+        "Drawdown": 0.3057,
+        "r_CRE": 0.716,
+        "r_CEV": 0.107
+      },
+      "tilt_1_2_1_2_0": {
+        "CAGR": 0.3335,
+        "Sharpe": 1.136,
+        "Sortino": 2.356,
+        "Drawdown": 0.3281,
+        "r_CRE": 0.698,
+        "r_CEV": 0.1077
+      }
+    },
+    "reproducibility_artifacts": {
+      "per_month_runtime_target_seconds": 217.39,
+      "convergence_trace_logged": true,
+      "pareto_archive_persisted": true,
+      "intermediate_probability_panel_persisted": true,
+      "intermediate_correlation_matrix_persisted": true
+    }
+  },
+  "mopso_hyperparameters": {
+    "N_pop": 500,
+    "Iter": 300,
+    "N_rep": 400,
+    "N_grid": 10,
+    "alpha_inflation": 0.1,
+    "beta_selection_pressure": 1,
+    "gamma_deletion_pressure": 1,
+    "mu_mutation_rate": 2,
+    "omega_inertia": 0.8,
+    "c1_personal_learning": 1.5,
+    "c2_global_learning": 1.5,
+    "lb_weight_lower_bound": 0,
+    "ub_weight_upper_bound": 1,
+    "mutation_probability_formula": "pm = (1 - t/(Iter - 1))^(1/mu)",
+    "grid_offset_formula": "dc = (s_max - s_min) * alpha",
+    "velocity_update_formula": "vel[i] = omega*vel[i] + c1*r1*(gbest_pos - pos[i]) + c2*r2*(pbest_pos[i] - pos[i])",
+    "rng_seed_protocol": {
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "random_state_all_estimators": 42,
+      "bit_generator": "PCG64",
+      "mopso_runs_per_hyperparameter_cell": 10,
+      "seed_scope": "per_run_independent"
+    },
+    "position_update_formula": "pos[i] = pos[i] + vel[i]",
+    "mutation_acceptance_rule": "accept if new_obj dominates objs[i] OR (objs[i] does not dominate new_obj AND rand() < 0.5)",
+    "personal_best_update_rule": "accept if objs[i] dominates pbest[i] OR (pbest[i] does not dominate objs[i] AND rand() < 0.5)",
+    "repository_pruning_rule": "while length(rep) > N_rep: remove via select_deletion(gamma)",
+    "grid_construction": "create_grid(rep_obj, ngrid, alpha)",
+    "initial_velocity": 0,
+    "initial_position_bounds": [
+      0,
+      1
+    ],
+    "initial_position_constraint": "sum_to_1",
+    "bound_projection_rule": "clip_to_(lb,ub)_then_renormalize_to_sum_1",
+    "simplex_projection_algorithm": "duchi_2008_euclidean",
+    "mutation_operator": "gaussian_perturbation_then_simplex_projection",
+    "mutation_gaussian_sigma": 0.05,
+    "stopping_criterion": "fixed_number_of_iterations",
+    "output": "result = {rep, rep_obj}",
+    "runs_per_hyperparameter_cell": 10,
+    "rng_seed_ensemble": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "hyperparameter_grid": {
+      "Iter": [
+        200,
+        300,
+        400
+      ],
+      "N_pop": [
+        200,
+        500,
+        600
+      ],
+      "N_rep": [
+        100,
+        200,
+        400
+      ]
+    },
+    "grid_search_diagnostics": [
+      "execution_time_seconds",
+      "hypervolume",
+      "spacing"
+    ],
+    "hypervolume_reference_point": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "spacing_definition": "std_of_nearest_neighbour_euclidean_distances_in_normalized_space",
+    "selected_configuration": {
+      "Iter": 300,
+      "N_pop": 500,
+      "N_rep": 400
+    }
+  },
+  "diagnostics_and_reporting": {
+    "deviation_tolerance_auroc_aupr": 0.02,
+    "variance_checks": true,
+    "reference_values": {
+      "table_2_significant_gamma": [
+        {
+          "sector": "Applied Resources",
+          "continent": "North America",
+          "gamma": -0.014,
+          "p_value": 0.001
+        },
+        {
+          "sector": "Applied Resources",
+          "continent": "Oceania",
+          "gamma": -0.011,
+          "p_value": 0.049
+        },
+        {
+          "sector": "Automobiles & Auto Parts",
+          "continent": "Asia",
+          "gamma": -0.0138,
+          "p_value": 0.052
+        },
+        {
+          "sector": "Automobiles & Auto Parts",
+          "continent": "Oceania",
+          "gamma": -0.0183,
+          "p_value": 0.1
+        },
+        {
+          "sector": "Chemicals",
+          "continent": "Africa",
+          "gamma": -0.0064,
+          "p_value": 0.017
+        },
+        {
+          "sector": "Chemicals",
+          "continent": "Asia",
+          "gamma": -0.0076,
+          "p_value": 0.003
+        },
+        {
+          "sector": "Chemicals",
+          "continent": "North America",
+          "gamma": -0.0063,
+          "p_value": 0.058
+        },
+        {
+          "sector": "Chemicals",
+          "continent": "Oceania",
+          "gamma": -0.0119,
+          "p_value": 0.001
+        },
+        {
+          "sector": "Consumer Goods Conglomerates",
+          "continent": "Africa",
+          "gamma": -0.0097,
+          "p_value": 0.053
+        },
+        {
+          "sector": "Consumer Goods Conglomerates",
+          "continent": "Asia",
+          "gamma": -0.0106,
+          "p_value": 0.031
+        },
+        {
+          "sector": "Consumer Goods Conglomerates",
+          "continent": "Oceania",
+          "gamma": -0.0094,
+          "p_value": 0.067
+        },
+        {
+          "sector": "Cyclical Consumer Products",
+          "continent": "Asia",
+          "gamma": -0.0075,
+          "p_value": 0.068
+        },
+        {
+          "sector": "Cyclical Consumer Products",
+          "continent": "Europe",
+          "gamma": -0.0088,
+          "p_value": 0.057
+        },
+        {
+          "sector": "Cyclical Consumer Products",
+          "continent": "North America",
+          "gamma": -0.0083,
+          "p_value": 0.069
+        },
+        {
+          "sector": "Cyclical Consumer Products",
+          "continent": "Oceania",
+          "gamma": -0.0113,
+          "p_value": 0.053
+        },
+        {
+          "sector": "Cyclical Consumer Services",
+          "continent": "Asia",
+          "gamma": -0.0109,
+          "p_value": 0.013
+        },
+        {
+          "sector": "Cyclical Consumer Services",
+          "continent": "Oceania",
+          "gamma": -0.012,
+          "p_value": 0.03
+        },
+        {
+          "sector": "Energy - Fossil Fuels",
+          "continent": "North America",
+          "gamma": -0.0153,
+          "p_value": 0.063
+        },
+        {
+          "sector": "Energy - Fossil Fuels",
+          "continent": "Oceania",
+          "gamma": -0.0192,
+          "p_value": 0.066
+        },
+        {
+          "sector": "Food & Beverages",
+          "continent": "Africa",
+          "gamma": -0.0058,
+          "p_value": 0.039
+        },
+        {
+          "sector": "Food & Beverages",
+          "continent": "North America",
+          "gamma": -0.0095,
+          "p_value": 0.006
+        },
+        {
+          "sector": "Food & Beverages",
+          "continent": "Oceania",
+          "gamma": -0.0115,
+          "p_value": 0.01
+        },
+        {
+          "sector": "Food & Drug Retailing",
+          "continent": "North America",
+          "gamma": -0.0098,
+          "p_value": 0.02
+        },
+        {
+          "sector": "Food & Drug Retailing",
+          "continent": "Oceania",
+          "gamma": -0.0135,
+          "p_value": 0.015
+        },
+        {
+          "sector": "Industrial & Commercial Services",
+          "continent": "Africa",
+          "gamma": -0.008,
+          "p_value": 0.023
+        },
+        {
+          "sector": "Industrial & Commercial Services",
+          "continent": "Asia",
+          "gamma": -0.0139,
+          "p_value": 0.0
+        },
+        {
+          "sector": "Industrial & Commercial Services",
+          "continent": "North America",
+          "gamma": -0.0096,
+          "p_value": 0.001
+        },
+        {
+          "sector": "Industrial & Commercial Services",
+          "continent": "Oceania",
+          "gamma": -0.0084,
+          "p_value": 0.034
+        },
+        {
+          "sector": "Industrial & Commercial Services",
+          "continent": "South America",
+          "gamma": 0.0068,
+          "p_value": 0.058
+        },
+        {
+          "sector": "Mineral Resources",
+          "continent": "Africa",
+          "gamma": -0.0136,
+          "p_value": 0.028
+        },
+        {
+          "sector": "Mineral Resources",
+          "continent": "Asia",
+          "gamma": -0.0148,
+          "p_value": 0.011
+        },
+        {
+          "sector": "Mineral Resources",
+          "continent": "North America",
+          "gamma": -0.0114,
+          "p_value": 0.091
+        },
+        {
+          "sector": "Personal & Household Products & Services",
+          "continent": "North America",
+          "gamma": -0.0066,
+          "p_value": 0.088
+        },
+        {
+          "sector": "Pharmaceuticals & Medical Research",
+          "continent": "North America",
+          "gamma": -0.009,
+          "p_value": 0.085
+        },
+        {
+          "sector": "Real Estate",
+          "continent": "Africa",
+          "gamma": -0.0077,
+          "p_value": 0.07
+        },
+        {
+          "sector": "Technology Equipment",
+          "continent": "Asia",
+          "gamma": -0.0077,
+          "p_value": 0.016
+        },
+        {
+          "sector": "Technology Equipment",
+          "continent": "Europe",
+          "gamma": -0.0053,
+          "p_value": 0.099
+        },
+        {
+          "sector": "Telecommunications Services",
+          "continent": "Oceania",
+          "gamma": -0.0133,
+          "p_value": 0.008
+        },
+        {
+          "sector": "Transportation",
+          "continent": "North America",
+          "gamma": -0.0068,
+          "p_value": 0.026
+        }
+      ],
+      "table_3_global_sector_gamma": [
+        {
+          "sector": "Chemicals",
+          "gamma": -0.0062,
+          "p_value": 0.0014
+        },
+        {
+          "sector": "Energy - Fossil Fuels",
+          "gamma": -0.0089,
+          "p_value": 0.0399
+        },
+        {
+          "sector": "Food & Beverages",
+          "gamma": -0.005,
+          "p_value": 0.007
+        },
+        {
+          "sector": "Real Estate",
+          "gamma": -0.0055,
+          "p_value": 0.0121
+        },
+        {
+          "sector": "Retailers",
+          "gamma": -0.0026,
+          "p_value": 0.0811
+        },
+        {
+          "sector": "Software & IT Services",
+          "gamma": 0.0026,
+          "p_value": 0.0609
+        },
+        {
+          "sector": "Telecommunications Services",
+          "gamma": -0.0042,
+          "p_value": 0.0718
+        },
+        {
+          "sector": "Transportation",
+          "gamma": -0.0032,
+          "p_value": 0.0893
+        }
+      ],
+      "table_5_iter_200": [
+        {
+          "N_rep": 100,
+          "N_pop": 200,
+          "time_s": 19.04,
+          "hypervolume": 3.01e-06,
+          "spacing": 0.000801
+        },
+        {
+          "N_rep": 100,
+          "N_pop": 500,
+          "time_s": 50.36,
+          "hypervolume": 4.47e-06,
+          "spacing": 0.000926
+        },
+        {
+          "N_rep": 100,
+          "N_pop": 600,
+          "time_s": 58.54,
+          "hypervolume": 4.92e-06,
+          "spacing": 0.000939
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 200,
+          "time_s": 30.16,
+          "hypervolume": 8.85e-06,
+          "spacing": 0.000717
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 500,
+          "time_s": 74.62,
+          "hypervolume": 1.08e-05,
+          "spacing": 0.000721
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 600,
+          "time_s": 86.25,
+          "hypervolume": 1.03e-05,
+          "spacing": 0.00075
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 200,
+          "time_s": 47.52,
+          "hypervolume": 2.04e-05,
+          "spacing": 0.000554
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 500,
+          "time_s": 115.17,
+          "hypervolume": 2.29e-05,
+          "spacing": 0.00057
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 600,
+          "time_s": 140.62,
+          "hypervolume": 2.48e-05,
+          "spacing": 0.000615
+        }
+      ],
+      "table_6_iter_300": [
+        {
+          "N_rep": 100,
+          "N_pop": 200,
+          "time_s": 27.64,
+          "hypervolume": 4.1e-06,
+          "spacing": 0.000906
+        },
+        {
+          "N_rep": 100,
+          "N_pop": 500,
+          "time_s": 71.91,
+          "hypervolume": 4.99e-06,
+          "spacing": 0.000916
+        },
+        {
+          "N_rep": 100,
+          "N_pop": 600,
+          "time_s": 115.21,
+          "hypervolume": 5.41e-06,
+          "spacing": 0.000882
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 200,
+          "time_s": 42.96,
+          "hypervolume": 9.48e-06,
+          "spacing": 0.00075
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 500,
+          "time_s": 107.04,
+          "hypervolume": 1.11e-05,
+          "spacing": 0.000765
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 600,
+          "time_s": 160.93,
+          "hypervolume": 1.1e-05,
+          "spacing": 0.000735
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 200,
+          "time_s": 73.74,
+          "hypervolume": 1.91e-05,
+          "spacing": 0.000557
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 500,
+          "time_s": 217.39,
+          "hypervolume": 3.37e-05,
+          "spacing": 0.000616
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 600,
+          "time_s": 257.48,
+          "hypervolume": 3.17e-05,
+          "spacing": 0.00061
+        }
+      ],
+      "table_7_iter_400": [
+        {
+          "N_rep": 100,
+          "N_pop": 200,
+          "time_s": 42.27,
+          "hypervolume": 3.68e-06,
+          "spacing": 0.000897
+        },
+        {
+          "N_rep": 100,
+          "N_pop": 500,
+          "time_s": 95.2,
+          "hypervolume": 4.38e-06,
+          "spacing": 0.000953
+        },
+        {
+          "N_rep": 100,
+          "N_pop": 600,
+          "time_s": 123.88,
+          "hypervolume": 5.03e-06,
+          "spacing": 0.00088
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 200,
+          "time_s": 58.95,
+          "hypervolume": 9.39e-06,
+          "spacing": 0.000721
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 500,
+          "time_s": 149.82,
+          "hypervolume": 1.15e-05,
+          "spacing": 0.000726
+        },
+        {
+          "N_rep": 200,
+          "N_pop": 600,
+          "time_s": 186.8,
+          "hypervolume": 1.18e-05,
+          "spacing": 0.000743
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 200,
+          "time_s": 100.14,
+          "hypervolume": 2.4e-05,
+          "spacing": 0.000599
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 500,
+          "time_s": 243.93,
+          "hypervolume": 4.03e-05,
+          "spacing": 0.00063
+        },
+        {
+          "N_rep": 400,
+          "N_pop": 600,
+          "time_s": 287.35,
+          "hypervolume": 4.7e-05,
+          "spacing": 0.000661
+        }
+      ],
+      "table_9_performance_metrics": {
+        "Market-Cap Weights": {
+          "CAGR": 0.1575,
+          "Sharpe": 1.041,
+          "Sortino": 1.85,
+          "Maximum Drawdown": 0.1478,
+          "r-CRE": 0.714,
+          "r-CEV": 0.1064
+        },
+        "Equally-Weighted": {
+          "CAGR": 0.1749,
+          "Sharpe": 1.153,
+          "Sortino": 1.834,
+          "Maximum Drawdown": 0.1672,
+          "r-CRE": 0.724,
+          "r-CEV": 0.1096
+        },
+        "Min Market Variance": {
+          "CAGR": 0.142,
+          "Sharpe": 1.282,
+          "Sortino": 2.324,
+          "Maximum Drawdown": 0.1147,
+          "r-CRE": 0.762,
+          "r-CEV": 0.1356
+        },
+        "Min CEV": {
+          "CAGR": 0.1668,
+          "Sharpe": 0.739,
+          "Sortino": 1.207,
+          "Maximum Drawdown": 0.4348,
+          "r-CRE": 0.71,
+          "r-CEV": 0.105
+        },
+        "Max Expected Return": {
+          "CAGR": 0.0332,
+          "Sharpe": 0.32,
+          "Sortino": 0.674,
+          "Maximum Drawdown": 0.6937,
+          "r-CRE": 0.695,
+          "r-CEV": 0.1187
+        },
+        "Balanced": {
+          "CAGR": 0.3354,
+          "Sharpe": 1.153,
+          "Sortino": 2.787,
+          "Maximum Drawdown": 0.3154,
+          "r-CRE": 0.721,
+          "r-CEV": 0.1048
+        },
+        "Minimum Risk": {
+          "CAGR": 0.1465,
+          "Sharpe": 1.133,
+          "Sortino": 1.304,
+          "Maximum Drawdown": 0.1738,
+          "r-CRE": 0.716,
+          "r-CEV": 0.1118
+        },
+        "Return-oriented": {
+          "CAGR": 0.2843,
+          "Sharpe": 0.92,
+          "Sortino": 2.077,
+          "Maximum Drawdown": 0.461,
+          "r-CRE": 0.727,
+          "r-CEV": 0.1051
+        },
+        "Variance-oriented": {
+          "CAGR": 0.3057,
+          "Sharpe": 1.312,
+          "Sortino": 3.029,
+          "Maximum Drawdown": 0.2078,
+          "r-CRE": 0.723,
+          "r-CEV": 0.1078
+        },
+        "Climate-oriented": {
+          "CAGR": 0.2847,
+          "Sharpe": 1.045,
+          "Sortino": 2.382,
+          "Maximum Drawdown": 0.3057,
+          "r-CRE": 0.716,
+          "r-CEV": 0.107
+        },
+        "Mean-Variance": {
+          "CAGR": 0.3335,
+          "Sharpe": 1.136,
+          "Sortino": 2.356,
+          "Maximum Drawdown": 0.3281,
+          "r-CRE": 0.698,
+          "r-CEV": 0.1077
+        }
+      },
+      "global_gamma": {
+        "value": -0.003,
+        "p_value": 0.0096
+      },
+      "reference_runtime_seconds": 217.39
+    },
+    "logistic_regression_metrics": {
+      "AUROC": {
+        "reported_values": {
+          "Africa": 0.9396,
+          "Asia": 0.9067,
+          "Europe": 0.838,
+          "North America": 0.8947,
+          "Oceania": 0.883,
+          "South America": 0.8754
+        },
+        "definition": "area_under_ROC_curve"
+      },
+      "AUPR": {
+        "reported_values": {
+          "Africa": 0.8031,
+          "Asia": 0.7312,
+          "Europe": 0.3776,
+          "North America": 0.61,
+          "Oceania": 0.3215,
+          "South America": 0.5227
+        },
+        "definition": "area_under_precision_recall_curve"
+      },
+      "AUPR_random": {
+        "reported_values": {
+          "Africa": 0.206,
+          "Asia": 0.2225,
+          "Europe": 0.0943,
+          "North America": 0.1429,
+          "Oceania": 0.0564,
+          "South America": 0.1341
+        },
+        "definition": "positive_class_prevalence"
+      }
+    },
+    "regression_significance_levels": {
+      "star_1": 0.1,
+      "star_2": 0.05,
+      "star_3": 0.01
+    },
+    "reporting_p_value_threshold": 0.1,
+    "sector_significance_counts": {
+      "table_2_significant": 17,
+      "table_2_total": 23,
+      "table_3_significant": 8
+    },
+    "dominant_sign": "negative",
+    "single_exception_sign": {
+      "sector": "Industrial & Commercial Services",
+      "continent": "South America",
+      "coefficient": 0.0068,
+      "p_value": 0.058
+    },
+    "software_IT_positive_sector": {
+      "coefficient": 0.0026,
+      "p_value": 0.0609
+    },
+    "global_coefficient": {
+      "value": -0.003,
+      "p_value": 0.0096
+    },
+    "active_weight_diagnostics": {
+      "truncation_threshold": 0.001,
+      "average_three_objective": 22,
+      "low_variance": 55,
+      "mean_variance_only": 14
+    },
+    "frontier_quality_checks": {
+      "uniformity": "high",
+      "shape": "smooth_concave",
+      "extension": "broad"
+    },
+    "asymptotic_checks": {
+      "idiosyncratic_limit": 0.0,
+      "systemic_limit": "rho * p * (1 - p)"
+    }
+  },
+  "plot_construction": {
+    "figure_dpi": 150,
+    "figure_size": [
+      10.0,
+      6.0
+    ],
+    "figure_1": {
+      "caption": "Probabilities of extreme temperatures over time in the period 1940-2020",
+      "type": "line_plot",
+      "x_axis": {
+        "variable": "year",
+        "label": "Year"
+      },
+      "y_axis": {
+        "variable": "p_hat_k_t",
+        "label": "Probability"
+      },
+      "series": [
+        "North America",
+        "South America",
+        "Europe",
+        "Asia",
+        "Africa",
+        "Oceania"
+      ],
+      "dpi": 150,
+      "figure_size": [
+        10,
+        6
+      ],
+      "font_family": "sans-serif"
+    },
+    "figure_2": {
+      "caption": "Estimated probability of extreme events for Europe and North America",
+      "type": "line_plot",
+      "panels": [
+        "Europe",
+        "North America"
+      ],
+      "continuous_line": {
+        "label": "1940–2025 fit",
+        "color": "black"
+      },
+      "dashed_line": {
+        "label": "1940–2019 fit",
+        "color": "red"
+      }
+    },
+    "figure_3": {
+      "caption": "Correlation matrix of extreme temperature time series",
+      "type": "heatmap",
+      "matrix_dimensions": [
+        6,
+        6
+      ],
+      "labels": [
+        "Africa",
+        "Asia",
+        "Europe",
+        "North America",
+        "Oceania",
+        "South America"
+      ],
+      "colormap": "viridis"
+    },
+    "figure_4": {
+      "caption": "Correlation boundaries of extreme temperature time series",
+      "type": "scatter_with_error_bars",
+      "x_axis": {
+        "variable": "continent_pair"
+      },
+      "y_axis": {
+        "variable": "correlation"
+      },
+      "elements": [
+        "empirical_rho",
+        "rho_min",
+        "rho_max"
+      ]
+    },
+    "figure_5": {
+      "caption": "Evolution of Climate Exposure Volatility across three portfolio strategies",
+      "type": "line_plot",
+      "x_axis": {
+        "variable": "year"
+      },
+      "y_axis": {
+        "variable": "CEV"
+      },
+      "series": [
+        "MSCI World Portfolio",
+        "Equally Weighted Continent Portfolio",
+        "Inverse Risk Weighted Portfolio"
+      ]
+    },
+    "figure_6": {
+      "caption": "Evolution of MSCI World Index Climate Exposure Volatility with three different correlation structures",
+      "type": "line_plot",
+      "x_axis": {
+        "variable": "year"
+      },
+      "y_axis": {
+        "variable": "CEV"
+      },
+      "series": [
+        "Pearson Correlation",
+        "Maximum Bound Correlation",
+        "Minimum Bound Correlation"
+      ]
+    },
+    "figure_7": {
+      "caption": "Pareto frontier for the 3-objective optimization problem",
+      "type": "3d_scatter",
+      "x_axis": {
+        "variable": "variance"
+      },
+      "y_axis": {
+        "variable": "CEV"
+      },
+      "z_axis": {
+        "variable": "expected_return"
+      }
+    },
+    "figure_8a": {
+      "caption": "Mean-Variance-CEV Jaccard distance heatmap",
+      "type": "heatmap",
+      "sorting_key": "increasing_variance"
+    },
+    "figure_8b": {
+      "caption": "Mean-Variance Jaccard distance heatmap",
+      "type": "heatmap",
+      "sorting_key": "increasing_variance"
+    },
+    "figure_9": {
+      "caption": "Expected return vs. CEV: 2D cross-sectional Pareto projections (in percentage)",
+      "type": "scatter_with_parabolic_fit",
+      "x_axis": {
+        "variable": "CEV"
+      },
+      "y_axis": {
+        "variable": "expected_return",
+        "units": "percentage"
+      },
+      "fit_curve": "parabolic"
+    },
+    "figure_10": {
+      "caption": "Cumulative returns of the Pareto-optimized portfolios and benchmarks (January 2020 — April 2025)",
+      "type": "line_plot",
+      "x_axis": {
+        "variable": "date"
+      },
+      "y_axis": {
+        "variable": "cumulative_return"
+      },
+      "series_count": 11
+    },
+    "figure_B11a": {
+      "caption": "3D Pareto frontier integrating CRE",
+      "type": "3d_scatter"
+    },
+    "figure_B11b": {
+      "caption": "Jaccard distance heatmap for the CRE optimization",
+      "type": "heatmap"
+    },
+    "figure_B12": {
+      "caption": "Expected return vs. CRE: 2D cross-sectional Pareto projections (in percentage)",
+      "type": "scatter_with_parabolic_fit"
+    },
+    "figure_C13": {
+      "caption": "Multiple perspectives of the 3D Pareto frontier (Return vs. Variance vs. CEV)",
+      "type": "3d_scatter_multipanel",
+      "panels": 3
+    }
+  },
+  "prompt_templates": {
+    "present": false,
+    "note": "The study contains no LLM system prompt, user prompt, few-shot example, chain-of-thought instruction, retrieval-augmented-generation template, or output-parsing template. All computation is classical statistical estimation and a multi-objective metaheuristic."
+  },
+  "llm_configuration": {
+    "present": false,
+    "llm_name": null,
+    "llm_provider": null,
+    "llm_model_version": null,
+    "llm_api_key": null,
+    "llm_api_endpoint": null,
+    "llm_settings": {
+      "temperature": null,
+      "top_p": null,
+      "top_k": null,
+      "max_tokens": null,
+      "frequency_penalty": null,
+      "presence_penalty": null,
+      "stop_sequences": null,
+      "system_message": null,
+      "seed": null,
+      "response_format": null
+    }
+  },
+  "network_architecture_parameters": {
+    "present": false,
+    "architecture_type": null,
+    "layer_count": null,
+    "layer_types": null,
+    "activation_functions": null,
+    "hidden_dimensions": null,
+    "embedding_dimensions": null,
+    "attention_heads": null,
+    "dropout_rate": null,
+    "batch_norm": null,
+    "layer_norm": null,
+    "residual_connections": null,
+    "positional_encoding": null,
+    "vocabulary_size": null,
+    "context_window": null,
+    "parameter_count": null,
+    "note": "The methodology is entirely non-neural. It comprises classical estimators and a multi-objective particle swarm algorithm."
+  },
+  "network_training_parameters": {
+    "present": false,
+    "optimizer": null,
+    "learning_rate": null,
+    "learning_rate_schedule": null,
+    "batch_size": null,
+    "epochs": null,
+    "gradient_clipping": null,
+    "weight_decay": null,
+    "momentum": null,
+    "loss_function": null,
+    "validation_split": null,
+    "early_stopping_patience": null,
+    "random_seed_for_training": null,
+    "hardware_accelerator": null,
+    "note": "The only iterative stochastic procedure is MOPSO (Algorithm 1)."
+  },
+  "explicitly_absent_components": {
+    "neural_network": {
+      "present": false,
+      "absent_elements": [
+        "MLP",
+        "CNN",
+        "RNN",
+        "LSTM",
+        "transformer",
+        "attention",
+        "embeddings",
+        "activation_functions",
+        "backpropagation",
+        "gradient_descent",
+        "learning_rate",
+        "batch_size",
+        "weight_initialization",
+        "fine_tuning"
+      ],
+      "note": "Cited only as external work: Aprea and Sbaiz (2025)."
+    },
+    "large_language_model": {
+      "present": false,
+      "absent_elements": [
+        "prompt_templates",
+        "system_prompts",
+        "LLM_temperature",
+        "LLM_top_p",
+        "LLM_top_k",
+        "tokenization",
+        "retrieval_augmented_generation",
+        "few_shot_examples",
+        "chain_of_thought_instructions"
+      ]
+    },
+    "reinforcement_learning": {
+      "present": false,
+      "absent_elements": [
+        "environment",
+        "reward_function",
+        "policy_network",
+        "Q_learning",
+        "actor_critic"
+      ]
+    },
+    "generative_models": {
+      "present": false,
+      "absent_elements": [
+        "VAE",
+        "GAN",
+        "diffusion_models",
+        "flow_models"
+      ]
+    },
+    "code_and_data_repositories": {
+      "github_repository": null,
+      "data_doi": null,
+      "zenodo": null,
+      "osf": null,
+      "supplementary_materials": null,
+      "note": "Only Footnote 5: 'Results are available upon request', referring to the mean-variance comparator's active-weight count."
+    },
+    "cited_but_not_used_methodologies": {
+      "ND_GAIN_index": {
+        "role": "comparison_only",
+        "source": "Footnote 3 §1"
+      },
+      "EEA_indicators": {
+        "role": "motivation_only",
+        "source": "Footnote 2 §1"
+      },
+      "Kahn_Ouazad_Yonder_2024": {
+        "role": "methodological_analogy_only",
+        "source": "§3.1"
+      },
+      "Luciani_Roncalli_2026": {
+        "role": "alternative_approach_cited",
+        "source": "§1"
+      }
+    }
+  },
+  "methodological_notes": {
+    "HAC_lag_rule": "floor(4*(T/100)^(2/9))",
+    "shrinkage_target_F": "scaled_identity",
+    "mutation_operator": "perturbation_then_simplex_projection",
+    "time_index_definition": "integer_months_since_1940_01",
+    "std_ddof_convention": 1,
+    "rng_seed_ensemble": "seeds_1_to_10",
+    "winsorisation": {
+      "full_sample_percentiles": [
+        0.01,
+        0.99
+      ],
+      "rationale": "cleansing step, not a modeling step; the return panel is not partitioned for modeling, so full-sample percentiles introduce no look-ahead bias"
+    },
+    "judgment_calls_resolved": [
+      {
+        "id": "JC-baseline",
+        "field": "global_design_constants.windows.baseline",
+        "manuscript_wording": "Section 2.1 calls 1960-1990 a '30-year window'",
+        "decision": "inclusive endpoints, 31 obs/month",
+        "rationale": "Task 2 Step 1 requires exactly 31 observations per (continent, calendar_month) over the stated 1960-1990 endpoints",
+        "location": "validate_temperature_coverage (Task 2)"
+      },
+      {
+        "id": "JC-driscoll-kraay",
+        "field": "module_M3_regressions.specification_3_global_panel.s tandard_errors",
+        "manuscript_wording": "HAC (Newey-West) robust standard errors is specified for Equation (8) only; the manuscript is silent on the panel (Eq 9-10) standard-error estimator",
+        "decision": "Driscoll-Kraay adopted as the PRIMARY panel estimator; stacked-row Newey-West retained as a labelled sensitivity diagnostic only",
+        "rationale": "within a month every continent's row shares the same sector return and the same market shock, so residuals are strongly cross-sectionally dependent; a Newey-West estimator over stacked rows is invalid for gamma_s/Gamma inference, while Driscoll-Kraay IS a HAC estimator (grouped-sum HAC across months) that respects the panel structure",
+        "location": "estimate_panel_fe (Task 19)"
+      },
+      {
+        "id": "JC-exclusion-labels",
+        "field": "module_M3_regressions.financial_exclusion_sectors",
+        "manuscript_wording": "banks, financial and insurance companies (Section 2.4, prose only)",
+        "decision": "['Banks', 'Financial Services', 'Insurance']",
+        "rationale": "no verbatim MSCI sector-taxonomy label list is given in the paper for this exclusion; Task 17's aggregate_sector_returns mirrors this same list identically so the two never diverge",
+        "location": "build_default_study_config (Task 1); consumed by aggregate_sector_returns (Task 17)"
+      },
+      {
+        "id": "JC-c1c2-label",
+        "field": "mopso_hyperparameters.velocity_update_formula",
+        "manuscript_wording": "Table C.10 labels c1 'Personal learning coefficient' and c2 'Global learning coefficient'",
+        "decision": "c1 multiplies the leader term (gbest_pos - pos); c2 multiplies the personal-best term (pbest_pos - pos), per Algorithm 1's velocity update and the surrounding prose",
+        "rationale": "Algorithm 1's pseudocode and prose agree with each other but not with the table's own row labels; both values equal 1.5, so no numeric effect follows",
+        "location": "run_mopso_optimization (Task 30)"
+      },
+      {
+        "id": "JC-numpy-abi",
+        "field": "N/A (build_environment_manifest)",
+        "manuscript_wording": "not a manuscript parameter",
+        "decision": "numpy.__version__ is used as the closest public proxy for a 'NumPy ABI version'",
+        "rationale": "no stable public NumPy ABI-version symbol is exposed by current NumPy releases; the private numpy._core.multiarray._get_ndarray_c_version accessor is avoided since it is an internal, unstable implementation detail, not a public API",
+        "location": "build_environment_manifest (Task 1)"
+      },
+      {
+        "id": "JC-table-registry-nine-artifacts",
+        "field": "N/A (validate_fundamentals_panels table registry)",
+        "manuscript_wording": "Task 2 Step 3's 'Data structures involved' line names exactly eight tables, while its own non- omission safeguard says 'a table-registry enumerating all nine artifacts'",
+        "decision": "the eight enumerated tables are followed",
+        "rationale": "no ninth artifact is referenced anywhere else in this codebase or in STUDY_CONFIG",
+        "location": "validate_fundamentals_panels (Task 2)"
+      },
+      {
+        "id": "JC-riskfree-basis-classification",
+        "field": "N/A (validate_firm_returns_panels riskfree_annualisation_basis)",
+        "manuscript_wording": "Task 2 Step 2 requires a 'consistent annualisation_factor' for risk-free rows without specifying a classification statistic",
+        "decision": "each instrument's rate basis (monthly_decimal/annual_decimal/annual_percent) is classified by the MAXIMUM absolute R_f_t rate over the validated 2004-2025 grid, then compared by FAMILY (monthly vs annual) against the declared annualisation_factor",
+        "rationale": "each instrument's rate basis (monthly_decimal/annual_decimal/annual_percent) is classified by the MAXIMUM absolute R_f_t rate over the validated 2004-2025 grid, then compared by FAMILY (monthly vs annual) against the declared annualisation_factor",
+        "location": "validate_firm_returns_panels (Task 2)"
+      },
+      {
+        "id": "JC-first-business-day-tier",
+        "field": "N/A (validate_fundamentals_panels trading calendar check)",
+        "manuscript_wording": "the Task specification states both 'exactly one first business day per month' and a binding non-omission safeguard of 'at least one'",
+        "decision": "'exactly one per month' is enforced as a WARNING restricted to the global_intersection market; the binding FATAL rule is 'at least one flagged day per month' evaluated over every row",
+        "rationale": "'exactly one per month' is enforced as a WARNING restricted to the global_intersection market; the binding FATAL rule is 'at least one flagged day per month' evaluated over every row",
+        "location": "validate_fundamentals_panels (Task 2)"
+      },
+      {
+        "id": "JC-winsorisation-order",
+        "field": "N/A (cleanse_firm_returns_panel stage ordering)",
+        "manuscript_wording": "Task 2 Step 1 prescribes (i) drop bad caps, (ii) winsorise, (iii) deduplicate revisions, in that order",
+        "decision": "the de-duplication winner is determined FIRST (without removing anything), winsorisation percentile boundaries are estimated on that survivor set, the clip is applied, and only then are the superseded duplicate rows removed, so an extreme duplicate never skews the cut-offs while the prescribed (i)-(ii)-(iii) sequence of transformations still applies to the returned data",
+        "rationale": "the de-duplication winner is determined FIRST (without removing anything), winsorisation percentile boundaries are estimated on that survivor set, the clip is applied, and only then are the superseded duplicate rows removed, so an extreme duplicate never skews the cut-offs while the prescribed (i)-(ii)-(iii) sequence of transformations still applies to the returned data",
+        "location": "cleanse_firm_returns_panel (Task 3)"
+      },
+      {
+        "id": "JC-dedup-tiebreak",
+        "field": "N/A (cleanse_firm_returns_panel revision precedence)",
+        "manuscript_wording": "the Task specification's tie-break prose reads 'resolved by the larger year_month ordering'",
+        "decision": "since the primary key already includes year_month, two unrevised duplicate rows sharing that key are resolved by a stable sort to the LAST row in original ingestion order (src_row_id descending) once revision precedence is exhausted",
+        "rationale": "since the primary key already includes year_month, two unrevised duplicate rows sharing that key are resolved by a stable sort to the LAST row in original ingestion order (src_row_id descending) once revision precedence is exhausted",
+        "location": "cleanse_firm_returns_panel (Task 3)"
+      },
+      {
+        "id": "JC-segment-fye-mapping",
+        "field": "N/A (check_revenue_reconciliation join key)",
+        "manuscript_wording": "the Task specification requires reconciling segment revenue against fundamentals without specifying how segment rows (which carry no fiscal_year_end_date of their own) join to a fiscal-year-end month",
+        "decision": "each segment (firm_id, fiscal_year) is mapped onto its FYE month THROUGH fundamentals; an ambiguous fiscal-year-to-FYE-month mapping, a duplicated fundamentals join key, or a per-firm-year currency disagreement is FATAL",
+        "rationale": "each segment (firm_id, fiscal_year) is mapped onto its FYE month THROUGH fundamentals; an ambiguous fiscal-year-to-FYE-month mapping, a duplicated fundamentals join key, or a per-firm-year currency disagreement is FATAL",
+        "location": "check_revenue_reconciliation (Task 3)"
+      },
+      {
+        "id": "JC-logit-nonconvergence-fatal",
+        "field": "N/A (fit_all_continents convergence policy)",
+        "manuscript_wording": "the Task specification's Step 2 challenge text says a non- convergent fit should 'log a warning and return the last iterate'",
+        "decision": "the non-omission safeguard governs instead: 'verify converged == True for every continent; if not, abort' is enforced as FATAL",
+        "rationale": "the non-omission safeguard governs instead: 'verify converged == True for every continent; if not, abort' is enforced as FATAL",
+        "location": "fit_all_continents (Task 7)"
+      },
+      {
+        "id": "JC-bootstrap-seed",
+        "field": "N/A (compute_auroc_per_continent bootstrap RNG)",
+        "manuscript_wording": "Task 8's own specification requires a seeded moving-block bootstrap without naming a seed",
+        "decision": "the bootstrap generator is seeded directly with 42 rather than through Task 1's dedicated MOPSO seed registry, since that registry's contract only accepts seeds {1..10}",
+        "rationale": "the bootstrap generator is seeded directly with 42 rather than through Task 1's dedicated MOPSO seed registry, since that registry's contract only accepts seeds {1..10}",
+        "location": "compute_auroc_per_continent (Task 8)"
+      },
+      {
+        "id": "JC-bootstrap-block-length",
+        "field": "N/A (compute_auroc_per_continent block_length default)",
+        "manuscript_wording": "no STUDY_CONFIG key pins the moving-block bootstrap's block length",
+        "decision": "the default block length is ceil(T ** (1/3)) per continent, exposed as an overridable block_length keyword; block_length=12 may be passed for the fixed-12 convention the Task specification also permits",
+        "rationale": "the default block length is ceil(T ** (1/3)) per continent, exposed as an overridable block_length keyword; block_length=12 may be passed for the fixed-12 convention the Task specification also permits",
+        "location": "compute_auroc_per_continent (Task 8)"
+      },
+      {
+        "id": "JC-pairwise-correlation-reindex",
+        "field": "N/A (pivot_bernoulli_wide missing-data handling)",
+        "manuscript_wording": "Task 11's own specification binds the correlation panel to the full 972-month grid without specifying missing-data handling",
+        "decision": "the panel is reindexed onto the full 972-month grid with PAIRWISE-complete missing-data handling (never a listwise row drop), plus a returned pairwise observation-count matrix",
+        "rationale": "the panel is reindexed onto the full 972-month grid with PAIRWISE-complete missing-data handling (never a listwise row drop), plus a returned pairwise observation-count matrix",
+        "location": "pivot_bernoulli_wide (Task 11)"
+      },
+      {
+        "id": "JC-anchor-cap-timing",
+        "field": "N/A (select_stratified_universe point-in-time capitalisation)",
+        "manuscript_wording": "Task 14's own worked example resolves anchor 2020-01-01 to the 2019-12 observation",
+        "decision": "the anchor capitalisation is the last observation strictly BEFORE the anchor date, under the reading that a month-start-keyed market_cap_usd row reports that calendar month's end-of-month value and so is not yet known at the anchor itself",
+        "rationale": "the anchor capitalisation is the last observation strictly BEFORE the anchor date, under the reading that a month-start-keyed market_cap_usd row reports that calendar month's end-of-month value and so is not yet known at the anchor itself",
+        "location": "select_stratified_universe (Task 14)"
+      },
+      {
+        "id": "JC-frozen-order-hash",
+        "field": "N/A (persist_frozen_universe canonical order)",
+        "manuscript_wording": "the Task specification requires a reproducible frozen firm- universe order without naming a canonicalisation rule",
+        "decision": "the canonical frozen order is the sorted firm_id sequence, with a SHA-256 digest computed over its serialisation for audit and cross-task order verification",
+        "rationale": "the canonical frozen order is the sorted firm_id sequence, with a SHA-256 digest computed over its serialisation for audit and cross-task order verification",
+        "location": "persist_frozen_universe (Task 14)"
+      },
+      {
+        "id": "JC-fiscal-year-label-convention",
+        "field": "N/A (_coerce_fiscal_year convention)",
+        "manuscript_wording": "Task 15 and Task 16 must label fiscal years identically for their (firm_id, fiscal_year) join to succeed, but neither task's prose fixes a labelling convention",
+        "decision": "the default convention is year_of_fiscal_year_end (a fiscal year ending 2019-06-30 is labelled 2019), confirmed to reproduce the stored-label convention of select_point_in_time_fundamentals (Task 15) verbatim",
+        "rationale": "the default convention is year_of_fiscal_year_end (a fiscal year ending 2019-06-30 is labelled 2019), confirmed to reproduce the stored-label convention of select_point_in_time_fundamentals (Task 15) verbatim",
+        "location": "_coerce_fiscal_year (Task 16)"
+      },
+      {
+        "id": "JC-uniform-default-off",
+        "field": "N/A (_parse_weight_vector allow_uniform_default)",
+        "manuscript_wording": "the Task specification allows a uniform-weight fallback for an unparseable revenue-share row in some readings",
+        "decision": "the allow_uniform_default escape hatch defaults to OFF (False); callers must opt in explicitly, and every use is logged at WARNING level",
+        "rationale": "the allow_uniform_default escape hatch defaults to OFF (False); callers must opt in explicitly, and every use is logged at WARNING level",
+        "location": "_parse_weight_vector (Task 16)"
+      },
+      {
+        "id": "JC-weight-sum-normalised-label",
+        "field": "N/A (normalize_and_explode_mapping validation grain)",
+        "manuscript_wording": "the Task specification does not specify whether revenue-share weight sums are verified per raw input row or per canonicalised label",
+        "decision": "weight sums are verified per NORMALISED continent label (not per literal input row), so a valid long- format mapping with repeated or aliased continent spellings is not spuriously FATAL",
+        "rationale": "weight sums are verified per NORMALISED continent label (not per literal input row), so a valid long- format mapping with repeated or aliased continent spellings is not spuriously FATAL",
+        "location": "normalize_and_explode_mapping (Task 16)"
+      },
+      {
+        "id": "JC-residual-inert",
+        "field": "N/A (compute_revenue_shares proportional residual)",
+        "manuscript_wording": "the Task specification describes a proportional-residual adjustment rule for reconciling revenue shares",
+        "decision": "the proportional residual is distributed using S_k = m_k / M, which is INERT with respect to S (the adjustment does not change the computed revenue shares under this distribution rule)",
+        "rationale": "the proportional residual is distributed using S_k = m_k / M, which is INERT with respect to S (the adjustment does not change the computed revenue shares under this distribution rule)",
+        "location": "compute_revenue_shares (Task 16)"
+      },
+      {
+        "id": "JC-sector-return-weight-timing",
+        "field": "N/A (aggregate_sector_returns market_cap_usd timing)",
+        "manuscript_wording": "the manuscript says only 'market capitalization weighted average' without specifying timing, while the binding Task specification requires SAME-MONTH capitalisation weights",
+        "decision": "the market_cap_usd cell keyed to the SAME year_month as the total_return_usd cell it weights is used, with no explicit lag; this accepts a mild look-ahead risk because the Task specification binds it explicitly, in preference to a lagged-weight alternative",
+        "rationale": "the market_cap_usd cell keyed to the SAME year_month as the total_return_usd cell it weights is used, with no explicit lag; this accepts a mild look-ahead risk because the Task specification binds it explicitly, in preference to a lagged-weight alternative",
+        "location": "aggregate_sector_returns (Task 17)"
+      },
+      {
+        "id": "JC-riskfree-conversion-formula",
+        "field": "N/A (_classify_and_convert_riskfree conversion)",
+        "manuscript_wording": "the Task specification requires using 'the declared compounding_convention and day_count_basis' without specifying a formula",
+        "decision": "tau = days_in_month / annualisation_factor for a genuine day-count denominator (360 or 365), else tau = 1/12; then simple/compounded/continuous compounding is applied per the declared convention, with an annual_percent basis divided by 100 first and an unclassified basis FATAL",
+        "rationale": "tau = days_in_month / annualisation_factor for a genuine day-count denominator (360 or 365), else tau = 1/12; then simple/compounded/continuous compounding is applied per the declared convention, with an annual_percent basis divided by 100 first and an unclassified basis FATAL",
+        "location": "_classify_and_convert_riskfree (Task 17)"
+      },
+      {
+        "id": "JC-msci-set-and-argmax",
+        "field": "N/A (orchestrate_task_22 manuscript benchmark claim)",
+        "manuscript_wording": "SS3.1 states the MSCI World benchmark's top continents as a set-and-argmax claim (Asia is the single largest weight among the top-3 set), not a strict ranking chain",
+        "decision": "the PRIMARY test implemented is the manuscript's set-and-argmax reading (top-3 SET membership plus Asia as argmax), never a strict Asia > North America > Europe chain",
+        "rationale": "the PRIMARY test implemented is the manuscript's set-and-argmax reading (top-3 SET membership plus Asia as argmax), never a strict Asia > North America > Europe chain",
+        "location": "orchestrate_task_22 (Task 22)"
+      },
+      {
+        "id": "JC-cev-hierarchy-full",
+        "field": "N/A (compute_strategy_cev_series hierarchy scope)",
+        "manuscript_wording": "the manuscript states inverse-weighted CEV is lowest, equal-weighted next, MSCI-weighted highest, 'among the three strategies'",
+        "decision": "this is read as a FULL, PER-PERIOD hierarchy (inverse <= equal <= MSCI in every period), FATAL by default on any violation, not merely a claim about the strategies' overall averages",
+        "rationale": "this is read as a FULL, PER-PERIOD hierarchy (inverse <= equal <= MSCI in every period), FATAL by default on any violation, not merely a claim about the strategies' overall averages",
+        "location": "compute_strategy_cev_series (Task 26)"
+      },
+      {
+        "id": "JC-raw-envelope-projected-magnitude",
+        "field": "N/A (compute_scenario_cevs post-projection ordering)",
+        "manuscript_wording": "the binding documents multiple options for handling a broken ordering after PSD projection",
+        "decision": "when the projected ordering fails, the RAW envelope is published for the ordering claim (already proved) and the PROJECTED values for magnitude, clearly labelled, rather than implementing a custom order- preserving projection",
+        "rationale": "when the projected ordering fails, the RAW envelope is published for the ordering claim (already proved) and the PROJECTED values for magnitude, clearly labelled, rather than implementing a custom order- preserving projection",
+        "location": "compute_scenario_cevs (Task 27)"
+      },
+      {
+        "id": "JC-msci-alpha-source",
+        "field": "N/A (orchestrate_task_27 alpha provenance)",
+        "manuscript_wording": "the manuscript states the CEV scenarios are computed 'for the MSCI World index'",
+        "decision": "the MSCI benchmark alpha is sourced by reading Task 22's own persisted alpha_market_cap artifact directly, rather than trusting an arbitrary caller- supplied alpha argument",
+        "rationale": "the MSCI benchmark alpha is sourced by reading Task 22's own persisted alpha_market_cap artifact directly, rather than trusting an arbitrary caller- supplied alpha argument",
+        "location": "orchestrate_task_27 (Task 27)"
+      },
+      {
+        "id": "JC-phat-tau-minus-1",
+        "field": "N/A (assemble_mopso_inputs p-hat month)",
+        "manuscript_wording": "SS5 requires the probability snapshot at tau minus one month, distinct from an earlier reading of 'p-hat at tau'",
+        "decision": "the p-hat month used for the MOPSO input snapshot is tau minus one calendar month, per SS5, superseding the Task specification's own 'p-hat at tau' wording",
+        "rationale": "the p-hat month used for the MOPSO input snapshot is tau minus one calendar month, per SS5, superseding the Task specification's own 'p-hat at tau' wording",
+        "location": "assemble_mopso_inputs (Task 31)"
+      },
+      {
+        "id": "JC-hardware-ratio-options",
+        "field": "N/A (execute_anchor_mopso runtime comparison)",
+        "manuscript_wording": "the binding documents two options for the hardware- ratio runtime comparison",
+        "decision": "Option A (raw speed-ratio, no normalised-runtime field) is the default; Option B (calibrated h) is accepted only with an independently-sourced hardware ratio, rejecting circular self-calibration",
+        "rationale": "Option A (raw speed-ratio, no normalised-runtime field) is the default; Option B (calibrated h) is accepted only with an independently-sourced hardware ratio, rejecting circular self-calibration",
+        "location": "execute_anchor_mopso (Task 31)"
+      },
+      {
+        "id": "JC-active-threshold-inclusive",
+        "field": "N/A (compute_active_weights threshold)",
+        "manuscript_wording": "the Task specification's active-weight threshold wording is ambiguous between inclusive and exclusive comparison at the boundary",
+        "decision": "the active threshold is >= 1e-3 (inclusive of exact equality), with ACTIVE_MATCH_TOL and ACTIVE_NEAR_TOL bands governing the reproduction comparison against Tasks 22/55",
+        "rationale": "the active threshold is >= 1e-3 (inclusive of exact equality), with ACTIVE_MATCH_TOL and ACTIVE_NEAR_TOL bands governing the reproduction comparison against Tasks 22/55",
+        "location": "compute_active_weights (Task 32)"
+      },
+      {
+        "id": "JC-global-normalisation-primary",
+        "field": "N/A (run_hyperparameter_sweep / normalize_objectives_union)",
+        "manuscript_wording": "SS4.3 describes hypervolume comparisons ACROSS cells (e.g. 'moving from 100 to 200, the hypervolume increases by an order of magnitude'), which a per-cell-normalised metric cannot represent",
+        "decision": "a single shared normalisation bound across ALL cells and all seeds, with reference point (1.1, 1.1, 1.1), is the PRIMARY hypervolume metric; the Task specification's own per-cell-normalised diagnostic at reference [1, 1, 1] is retained as a labelled, non-primary diagnostic",
+        "rationale": "a single shared normalisation bound across ALL cells and all seeds, with reference point (1.1, 1.1, 1.1), is the PRIMARY hypervolume metric; the Task specification's own per-cell-normalised diagnostic at reference [1, 1, 1] is retained as a labelled, non-primary diagnostic",
+        "location": "run_hyperparameter_sweep (Task 33)"
+      },
+      {
+        "id": "JC-schott-spacing-primary",
+        "field": "N/A (compute_spacing metric choice)",
+        "manuscript_wording": "the manuscript specifies the Schott (1995) L1 spacing metric with an n-1 divisor, while the Task specification separately describes a Euclidean, population-divisor variant",
+        "decision": "Schott's L1 spacing with the n-1 divisor is the PRIMARY metric; the Euclidean variant is retained as a labelled secondary diagnostic",
+        "rationale": "Schott's L1 spacing with the n-1 divisor is the PRIMARY metric; the Euclidean variant is retained as a labelled secondary diagnostic",
+        "location": "compute_spacing (Task 33)"
+      },
+      {
+        "id": "JC-generator-digest-seed-cell",
+        "field": "N/A (_generator_digest provenance fingerprint)",
+        "manuscript_wording": "the Task specification does not specify how to fingerprint a MOPSO run's random-generator provenance for the sweep checkpoint",
+        "decision": "the digest fingerprints the (seed, cell) pair rather than a literal serialized PCG64 byte-stream, since Task 30's swarm draws from a single PCG64 stream fully determined by the integer seed alone and no generator-state artifact is otherwise persisted",
+        "rationale": "the digest fingerprints the (seed, cell) pair rather than a literal serialized PCG64 byte-stream, since Task 30's swarm draws from a single PCG64 stream fully determined by the integer seed alone and no generator-state artifact is otherwise persisted",
+        "location": "_generator_digest (Task 33)"
+      },
+      {
+        "id": "JC-ten-run-reference-averages",
+        "field": "N/A (compare_against_references reference table)",
+        "manuscript_wording": "the manuscript states the published Tables 5-7 values are 10-run averages, while the Task specification's own wording suggests a single run",
+        "decision": "the persisted reference table is read as 10-run averages per the manuscript, overriding the Task specification's 'single-run' wording; GAIN_MATCH_TOL and GAIN_NEAR_TOL bands govern the relative-gain comparison",
+        "rationale": "the persisted reference table is read as 10-run averages per the manuscript, overriding the Task specification's 'single-run' wording; GAIN_MATCH_TOL and GAIN_NEAR_TOL bands govern the relative-gain comparison",
+        "location": "compare_against_references (Task 34)"
+      },
+      {
+        "id": "JC-sortino-satchell-primary",
+        "field": "N/A (compute_performance_metrics Sortino definition)",
+        "manuscript_wording": "the manuscript and the Table 9 evidence support the Sortino-Satchell lower partial moment over ALL T months, while the Task specification separately describes a 'standard deviation of negative returns only' convention",
+        "decision": "the Sortino-Satchell all-T lower partial moment is PRIMARY; the Task specification's negative-returns-only convention is retained as a labelled sensitivity column, since only the all-T convention reproduces Table 9's published Sortino/Sharpe ratios",
+        "rationale": "the Sortino-Satchell all-T lower partial moment is PRIMARY; the Task specification's negative-returns-only convention is retained as a labelled sensitivity column, since only the all-T convention reproduces Table 9's published Sortino/Sharpe ratios",
+        "location": "compute_performance_metrics (Task 35)"
+      },
+      {
+        "id": "JC-point-in-time-benchmark-not-harmonised",
+        "field": "N/A (_market_cap_weights snapshot convention)",
+        "manuscript_wording": "Task 35's market-capitalisation benchmark row must vary by month, unlike Task 17's own snapshot convention",
+        "decision": "the benchmark uses the point-in-time month-minus-one snapshot, deliberately NOT harmonised with Task 17's own capitalisation timing convention (JC-sector- return-weight-timing), since the two callables serve different purposes",
+        "rationale": "the benchmark uses the point-in-time month-minus-one snapshot, deliberately NOT harmonised with Task 17's own capitalisation timing convention (JC-sector- return-weight-timing), since the two callables serve different purposes",
+        "location": "_market_cap_weights (Task 35)"
+      },
+      {
+        "id": "JC-spearman-descriptive-only",
+        "field": "N/A (summarize_appendix_b monotone trend statistic)",
+        "manuscript_wording": "the Task specification requires quantifying the return-CRE monotone trend with Spearman rank correlation and a qualitative verdict",
+        "decision": "Spearman coefficients are reported as DESCRIPTIVE statistics only, with no p-value (archive points are optimiser outputs, not independent samples), and the monotone verdict threshold is read from configuration when supplied, labelled a judgment call",
+        "rationale": "Spearman coefficients are reported as DESCRIPTIVE statistics only, with no p-value (archive points are optimiser outputs, not independent samples), and the monotone verdict threshold is read from configuration when supplied, labelled a judgment call",
+        "location": "summarize_appendix_b (Task 38)"
+      },
+      {
+        "id": "JC-rho-max-correction",
+        "field": "N/A (verify_equation_fixtures Frechet-Hoeffding control)",
+        "manuscript_wording": "Task 39 Step 2's own worked example states 'p1 = 1 - p2 gives rho_max = 1'",
+        "decision": "this example is corrected: complementary marginals (p1 = 1 - p2) give rho_min = -1, not rho_max = 1; rho_max = 1 requires EQUAL marginals (p1 = p2), matching Task 13's own specification",
+        "rationale": "this example is corrected: complementary marginals (p1 = 1 - p2) give rho_min = -1, not rho_max = 1; rho_max = 1 requires EQUAL marginals (p1 = p2), matching Task 13's own specification",
+        "location": "verify_equation_fixtures (Task 39)"
+      },
+      {
+        "id": "JC-near-noiseless-panel-fe-fixture",
+        "field": "N/A (verify_equation_fixtures Eq 9-10 fixture)",
+        "manuscript_wording": "the Task specification implies a noiseless fixed-effects fixture for verifying Equations (9)-(10)",
+        "decision": "a genuinely noiseless fixture drives estimate_panel_fe's Driscoll-Kraay standard error to exactly zero, which is FATAL for an unrelated reason (degenerate inference), so a near-noiseless fixture (seeded Gaussian noise, sigma=1e-6) is used instead, with recovery checked against the fitted standard error",
+        "rationale": "a genuinely noiseless fixture drives estimate_panel_fe's Driscoll-Kraay standard error to exactly zero, which is FATAL for an unrelated reason (degenerate inference), so a near-noiseless fixture (seeded Gaussian noise, sigma=1e-6) is used instead, with recovery checked against the fitted standard error",
+        "location": "verify_equation_fixtures (Task 39)"
+      },
+      {
+        "id": "JC-unchecked-not-mismatch",
+        "field": "N/A (build_verification_report NaN classification)",
+        "manuscript_wording": "the Task specification's classification vocabulary is match/tolerable/mismatch without a defined treatment for a non-computable value",
+        "decision": "an artifact label with no reproduced value, or a NaN/non-finite reproduced or reference value, is recorded 'unchecked' with a reason and stays visible in the narrative, rather than being folded into 'mismatch' or silently dropped",
+        "rationale": "an artifact label with no reproduced value, or a NaN/non-finite reproduced or reference value, is recorded 'unchecked' with a reason and stays visible in the narrative, rather than being folded into 'mismatch' or silently dropped",
+        "location": "build_verification_report (Task 39)"
+      },
+      {
+        "id": "JC-extreme-event-block",
+        "field": "global_design_constants.extreme_event",
+        "manuscript_wording": "the Task specification binds Task 6 Step 1 to the dotted path global_design_constants.extreme_event",
+        "decision": "the canonical Equation (2) specification (threshold, operator, tail) lives in the nested extreme_event block; the three historical flat keys (extreme_threshold_tau, threshold_operator, anomaly_direction) are kept only as deprecated aliases",
+        "rationale": "any caller still reading the flat keys is unaffected; resolve_extreme_spec reads the extreme_event block first and falls back to the flat aliases with a logged WARNING, so the two representations never silently diverge",
+        "location": "build_default_study_config (Task 1); consumed by resolve_extreme_spec (Task 6)"
+      },
+      {
+        "id": "JC-sector-universe-count-or-identity",
+        "field": "N/A (fit_sector_panels_via_orchestrator sector universe check)",
+        "manuscript_wording": "the Task specification does not specify whether the fitted sector universe is checked by count or by exact identity",
+        "decision": "the data-driven sector universe is cross-checked by COUNT against EXPECTED_SECTOR_COUNT (23) by default; an optional expected_sectors override switches to an IDENTITY check against a configuration-recorded exact set",
+        "rationale": "the universe is derived from the data (post Task 17 financial exclusion), never bound to an assumed hardcoded completion of the 23-sector count, so a plain count check is the default and identity is opt-in when a caller has a concrete expected roster",
+        "location": "fit_sector_panels_via_orchestrator (Task 20)"
+      },
+      {
+        "id": "JC-shared-run-id-first-leg-single-scope",
+        "field": "N/A (run_two_scope_panel_fe_driver ordering)",
+        "manuscript_wording": "19.7's run_id and fingerprint safeguard only proves anything when both pooling scopes are fit under the SAME run_id from the SAME data",
+        "decision": "the shared run_id is generated once and passed to both orchestrators; the FIRST call (sector-level, Task 20) must pass allow_single_scope=True since its counterpart cannot exist yet (logged as a WARNING naming the skipped proof), while the SECOND call (global, Task 21) runs with allow_single_scope=False and performs the real cross-scope proof",
+        "rationale": "the two sidecars cannot both be written atomically at once, so a driver run always exercises the genuine two-scope safeguard at least once, on the freshly written pair, never on a stale file from an unrelated run",
+        "location": "run_two_scope_panel_fe_driver (Task 21)"
+      },
+      {
+        "id": "JC-continent-case-preserved",
+        "field": "N/A (normalize_temperature_frame continent casing)",
+        "manuscript_wording": "no case convention for the continent label is declared in the paper or the Task specification",
+        "decision": "surrounding whitespace is trimmed on continent labels but case is left untouched, never case-folded",
+        "rationale": "case-folding a typo'd label could silently merge it with a valid one instead of letting the closed- vocabulary enum invariant flag it visibly",
+        "location": "normalize_temperature_frame (Task 2)"
+      },
+      {
+        "id": "JC-riskfree-enum-defaults",
+        "field": "N/A (validate_firm_returns_panels instrument/convention enums)",
+        "manuscript_wording": "STUDY_CONFIG currently declares no risk-free instrument, compounding-convention or day-count enum node",
+        "decision": "the module-level literal sets (T-BILL-1M/EONIA/SOFR/SONIA, simple/compounded/continuous, 360/365/1) remain the default domain; a caller may override them via the optional enum_overrides keyword once a config node exists",
+        "rationale": "the module-level literal sets (T-BILL-1M/EONIA/SOFR/SONIA, simple/compounded/continuous, 360/365/1) remain the default domain; a caller may override them via the optional enum_overrides keyword once a config node exists",
+        "location": "validate_firm_returns_panels (Task 2)"
+      },
+      {
+        "id": "JC-frozen-order-fallback-uncontrolled",
+        "field": "N/A (compute_revenue_shares frozen_order fallback)",
+        "manuscript_wording": "the Task specification does not specify behaviour when no frozen firm order is supplied",
+        "decision": "when frozen_order is None, coverage is NOT enforced and the wide form falls back to the sorted unique firms observed in the output; every use of this fallback is logged at WARNING level",
+        "rationale": "this is a documented accommodation for callers without a controlled roster (e.g. unit tests), since Equation (12) needs S for every frozen-universe firm and a silent skip would fail open",
+        "location": "compute_revenue_shares (Task 16)"
+      },
+      {
+        "id": "JC-fx-month-end-convention",
+        "field": "N/A (check_fx_closure month-end reading)",
+        "manuscript_wording": "the Task specification asks for an FX rate at 'month-end' for each required (currency, month) pair",
+        "decision": "the FX table's own year_month column, like every other Task 2 month key, is stored at month-START; 'month-end' is read as 'the enclosing calendar month', keyed at month-start to match the FX table's own convention, not a distinct end-of-month timestamp",
+        "rationale": "the FX table's own year_month column, like every other Task 2 month key, is stored at month-START; 'month-end' is read as 'the enclosing calendar month', keyed at month-start to match the FX table's own convention, not a distinct end-of-month timestamp",
+        "location": "check_fx_closure (Task 3)"
+      },
+      {
+        "id": "JC-dispersion-stats-additive",
+        "field": "N/A (aggregate_cell_metrics dispersion fields)",
+        "manuscript_wording": "the Task specification's Step 3 aggregation does not specify a dispersion statistic beyond the per-cell mean",
+        "decision": "robust aggregation additionally reports std, min and max of time, hypervolume and spacing across successful runs, extending the aggregator's output with new keys only; no existing key is renamed or removed",
+        "rationale": "robust aggregation additionally reports std, min and max of time, hypervolume and spacing across successful runs, extending the aggregator's output with new keys only; no existing key is renamed or removed",
+        "location": "aggregate_cell_metrics (Task 33)"
+      },
+      {
+        "id": "JC-register-meta",
+        "field": "methodological_notes.judgment_calls_resolved",
+        "manuscript_wording": "the Task specification binds Task 39 Step 3 to document 'each judgment call' via a README cross-checked against a register",
+        "decision": "every distinct implementation decision is consolidated into ONE traceable register (id, field, manuscript_wording, decision, rationale, location) rather than left scattered across docstrings with no single index",
+        "rationale": "a scattered set of decisions cannot be cross-checked for completeness; a single register with a location field per entry lets the README, and this batch's own invariant test, verify every decision is both documented and cited in code",
+        "location": "build_default_study_config (Task 1); consumed by write_readme (Task 39)"
+      },
+      {
+        "id": "JC-readme-generation-design",
+        "field": "N/A (write_readme generation and safety design)",
+        "manuscript_wording": "the Task specification requires a README documenting every task, judgment call and UNSPECIFIED default, cross- checked against the register, and never overwriting existing content",
+        "decision": "the README is generated from three authoritative sources (the AST-derived task registry, Task 1's judgment-call register, and the Task 1 unresolved-marker scan (scan_unspecified_fields)), its non- omission cross-check re-scans the RENDERED text rather than trusting the input lists, and it refuses outright to overwrite an existing project-root README",
+        "rationale": "checking the rendered text (not the input lists) catches an entry silently dropped during rendering, and the project-root guard prevents this generator from ever destroying a user's own top-level documentation",
+        "location": "write_readme (Task 39)"
+      },
+      {
+        "id": "JC-eq17-18-discriminating-fixture",
+        "field": "N/A (verify_equation_fixtures Eq 17-18 fixture design)",
+        "manuscript_wording": "the binding Eq 17-18 fixture case (K=6, p=0.3, rho=0.2) is kept verbatim",
+        "decision": "a SECOND case (K=6, p=0.3, rho=0.5) is added alongside the original, since at rho=0.2 the idiosyncratic and systemic terms are numerically IDENTICAL (both 0.035) and cannot discriminate a mis-wired systemic check from an idiosyncratic one",
+        "rationale": "a SECOND case (K=6, p=0.3, rho=0.5) is added alongside the original, since at rho=0.2 the idiosyncratic and systemic terms are numerically IDENTICAL (both 0.035) and cannot discriminate a mis-wired systemic check from an idiosyncratic one",
+        "location": "verify_equation_fixtures (Task 39)"
+      },
+      {
+        "id": "JC-pulse-check-tolerance",
+        "field": "N/A (compute_performance_metrics pulse-check WARNING band)",
+        "manuscript_wording": "no tolerance is published for the Table 9 Sharpe pulse check",
+        "decision": "PULSE_CHECK_WARN_REL_TOL=0.5 is a documented default band beyond which the LOGGED (never FATAL) pulse check escalates from INFO to WARNING",
+        "rationale": "PULSE_CHECK_WARN_REL_TOL=0.5 is a documented default band beyond which the LOGGED (never FATAL) pulse check escalates from INFO to WARNING",
+        "location": "compute_performance_metrics (Task 35)"
+      },
+      {
+        "id": "JC-divergence-warn-threshold",
+        "field": "N/A (summarize_divergences DIVERGENCE_WARN)",
+        "manuscript_wording": "Figure 2 (SS2.1) supports the claim only qualitatively; the Task specification asks to document the chosen divergence threshold",
+        "decision": "DIVERGENCE_WARN=0.05 is adopted as a conventional threshold for an absolute per-continent probability divergence WARNING",
+        "rationale": "DIVERGENCE_WARN=0.05 is adopted as a conventional threshold for an absolute per-continent probability divergence WARNING",
+        "location": "summarize_divergences (Task 10)"
+      },
+      {
+        "id": "JC-admissibility-tolerance-and-strict-interior",
+        "field": "N/A (verify_admissibility_and_plot ADMISS_TOL)",
+        "manuscript_wording": "the Task specification's binding element requires an admissibility tolerance of 1e-6, not the looser 1e-3 the manuscript's own prose might suggest",
+        "decision": "ADMISS_TOL=1e-6 is the module default, resolved from an explicit argument, then a config key, then this default, always logged; the manuscript's own strict- interior claim is evaluated as a non-FATAL diagnostic (``strict_interior``) over all 15 pairs, never a hard gate",
+        "rationale": "ADMISS_TOL=1e-6 is the module default, resolved from an explicit argument, then a config key, then this default, always logged; the manuscript's own strict- interior claim is evaluated as a non-FATAL diagnostic (``strict_interior``) over all 15 pairs, never a hard gate",
+        "location": "verify_admissibility_and_plot (Task 13)"
+      },
+      {
+        "id": "JC-conda-lock-not-produced",
+        "field": "N/A (collect_environment_lock)",
+        "manuscript_wording": "the Task specification binds a conda-lock.yml artifact (Step 3)",
+        "decision": "no file named conda-lock.yml is ever written; conda-lock is verified not installed on this machine, so the pinned environment is instead an honest record of installed versions with RECORD fingerprints, labelled exactly as such and never as a pip --require-hashes lock",
+        "rationale": "no file named conda-lock.yml is ever written; conda-lock is verified not installed on this machine, so the pinned environment is instead an honest record of installed versions with RECORD fingerprints, labelled exactly as such and never as a pip --require-hashes lock",
+        "location": "collect_environment_lock (Task 39)"
+      },
+      {
+        "id": "JC-git-tag-not-applicable",
+        "field": "N/A (build_reproducibility_bundle)",
+        "manuscript_wording": "the Task specification recommends tagging the final Git release v1.0-reproduction-final (Step 3)",
+        "decision": "this directory is verified not a git repository, so the manifest's git_tag_check always records \"not_applicable: not a git repository\"; no git command is ever run and no tag or commit hash is ever fabricated",
+        "rationale": "this directory is verified not a git repository, so the manifest's git_tag_check always records \"not_applicable: not a git repository\"; no git command is ever run and no tag or commit hash is ever fabricated",
+        "location": "build_reproducibility_bundle (Task 39)"
+      },
+      {
+        "id": "JC-cross-task-seed-source-paths",
+        "field": "N/A (build_reproducibility_bundle)",
+        "manuscript_wording": "the Task specification binds per-run seed state (Step 3) without naming task-specific file paths",
+        "decision": "the canonical file-naming conventions each of Tasks 1, 33 and 35 already establishes on disk are read directly; Task 31's anchor-run seed is recorded via Task 1's run_manifest.jsonl run_id back-fill, and Task 34 selects from Task 33's own sweep log, so neither writes an independent per-run seed artifact",
+        "rationale": "the canonical file-naming conventions each of Tasks 1, 33 and 35 already establishes on disk are read directly; Task 31's anchor-run seed is recorded via Task 1's run_manifest.jsonl run_id back-fill, and Task 34 selects from Task 33's own sweep log, so neither writes an independent per-run seed artifact",
+        "location": "_collect_cross_task_seed_records (Task 39)"
+      },
+      {
+        "id": "JC-bundle-project-root-default",
+        "field": "N/A (build_reproducibility_bundle project_root)",
+        "manuscript_wording": "N/A: no anchor root for source-path containment is specified",
+        "decision": "project_root defaults to the current working directory when the caller supplies none; a sandboxed caller passes its own temporary directory so every legitimate fixture stays contained",
+        "rationale": "project_root defaults to the current working directory when the caller supplies none; a sandboxed caller passes its own temporary directory so every legitimate fixture stays contained",
+        "location": "_assert_path_contained (Task 39)"
+      },
+      {
+        "id": "JC-workload-verification-fields",
+        "field": "N/A (_resolve_per_invocation_runtime)",
+        "manuscript_wording": "SS5: the time execution is 217.39 seconds per month, on the identical anchor workload (rebalancing month 2020-01 with the selected hyperparameters)",
+        "decision": "the Task 31 deliverable records neither the tau date nor the hyperparameters actually used, only the derived p_month; the workload check compares the observed p_month against the value expected for the published anchor tau, since that is the only independently recorded field this stage returns",
+        "rationale": "the Task 31 deliverable records neither the tau date nor the hyperparameters actually used, only the derived p_month; the workload check compares the observed p_month against the value expected for the published anchor tau, since that is the only independently recorded field this stage returns",
+        "location": "_resolve_per_invocation_runtime (Task 40)"
+      },
+      {
+        "id": "JC-checklist-pinned-versions",
+        "field": "N/A (verify_library_checklist)",
+        "manuscript_wording": "compare against version specifiers from a lock file",
+        "decision": "no genuine lock file exists in this project (JC-conda-lock-not-produced); the checklist instead accepts an optional pinned_versions mapping supplied by the caller for an exact-match comparison, and independently re-queries installed metadata rather than trusting the caller-supplied version mapping alone",
+        "rationale": "no genuine lock file exists in this project (JC-conda-lock-not-produced); the checklist instead accepts an optional pinned_versions mapping supplied by the caller for an exact-match comparison, and independently re-queries installed metadata rather than trusting the caller-supplied version mapping alone",
+        "location": "verify_library_checklist (Task 1)"
+      },
+      {
+        "id": "JC-coverage-label-type-schema",
+        "field": "N/A (COVERAGE_LABEL_TYPE_SCHEMA)",
+        "manuscript_wording": "validate each resolved target against a per-label schema",
+        "decision": "the manuscript specifies no formal schema per coverage label; the schema instead records the structural Python type (dict, str or list) each of the 32 labels resolves to in the reference configuration, catching a config edit that silently changes a label's resolved kind, never a business schema on field names or numeric ranges",
+        "rationale": "the manuscript specifies no formal schema per coverage label; the schema instead records the structural Python type (dict, str or list) each of the 32 labels resolves to in the reference configuration, catching a config edit that silently changes a label's resolved kind, never a business schema on field names or numeric ranges",
+        "location": "validate_study_config (Task 1)"
+      },
+      {
+        "id": "JC-enum-domain-config-keys",
+        "field": "N/A (validate_temperature_enums)",
+        "manuscript_wording": "source the enum domains from config",
+        "decision": "Task 1's build_default_study_config does not currently populate allowed_continents, allowed_spatial_methods or allowed_quality_flags under raw_input_schemas.temperature_panel, so validate_temperature_enums reads them from config when present and falls back to the module constants (the manuscript-fixed six continent labels) otherwise",
+        "rationale": "Task 1's build_default_study_config does not currently populate allowed_continents, allowed_spatial_methods or allowed_quality_flags under raw_input_schemas.temperature_panel, so validate_temperature_enums reads them from config when present and falls back to the module constants (the manuscript-fixed six continent labels) otherwise",
+        "location": "validate_temperature_enums (Task 2)"
+      },
+      {
+        "id": "JC-anomaly-source-row-id",
+        "field": "N/A (join_baseline_moments)",
+        "manuscript_wording": "carry the raw src_row_id from Tasks 2/3 as Z_source_row_id",
+        "decision": "Neither Task 2's nor Task 3's temperature cleansing persists a raw src_row_id column for the temperature panel (unlike the firm-side tables), so join_baseline_moments stamps the caller's DataFrame index label as Z_source_row_id before any reset, the closest available provenance given that upstream contract",
+        "rationale": "Neither Task 2's nor Task 3's temperature cleansing persists a raw src_row_id column for the temperature panel (unlike the firm-side tables), so join_baseline_moments stamps the caller's DataFrame index label as Z_source_row_id before any reset, the closest available provenance given that upstream contract",
+        "location": "join_baseline_moments (Task 5)"
+      },
+      {
+        "id": "JC-anomaly-intermediate-opt-in",
+        "field": "N/A (compute_standardized_anomaly)",
+        "manuscript_wording": "persist a run-versioned intermediate frame",
+        "decision": "intermediate_dir defaults to None, skipping persistence, so compute_standardized_anomaly stays a pure function for any caller that has not opted in; the orchestrator opts in explicitly with its own output directory",
+        "rationale": "intermediate_dir defaults to None, skipping persistence, so compute_standardized_anomaly stays a pure function for any caller that has not opted in; the orchestrator opts in explicitly with its own output directory",
+        "location": "compute_standardized_anomaly (Task 5)"
+      },
+      {
+        "id": "JC-anomaly-diag-opt-in",
+        "field": "N/A (validate_anomaly_panel)",
+        "manuscript_wording": "persist the diagnostics",
+        "decision": "diagnostics_dir defaults to None, skipping persistence, so validate_anomaly_panel stays side-effect free for any caller that has not opted in; the orchestrator opts in explicitly with its own output directory",
+        "rationale": "diagnostics_dir defaults to None, skipping persistence, so validate_anomaly_panel stays side-effect free for any caller that has not opted in; the orchestrator opts in explicitly with its own output directory",
+        "location": "validate_anomaly_panel (Task 5)"
+      },
+      {
+        "id": "JC-anomaly-raw-snapshot-optional",
+        "field": "N/A (save_anomaly_panel)",
+        "manuscript_wording": "SHA-256 of the raw temperature snapshot plus source_snapshot_date, stored in Parquet key-value metadata",
+        "decision": "raw_temperature_snapshot defaults to None; when omitted, sha256_raw_temperature and source_snapshot_date are recorded as 'unavailable' rather than fabricated, since Task 5 has no access to a frame upstream of its own df_clean argument",
+        "rationale": "raw_temperature_snapshot defaults to None; when omitted, sha256_raw_temperature and source_snapshot_date are recorded as 'unavailable' rather than fabricated, since Task 5 has no access to a frame upstream of its own df_clean argument",
+        "location": "save_anomaly_panel (Task 5)"
+      },
+      {
+        "id": "JC-restricted-end-windows",
+        "field": "N/A (resolve_restricted_end)",
+        "manuscript_wording": "add the windows path to config",
+        "decision": "Task 1's build_default_study_config populates neither the flat restricted_end/restricted_end_date keys nor a windows block, so resolve_restricted_end additionally checks a nested windows.restricted_end path, ready for when Task 1 populates it",
+        "rationale": "Task 1's build_default_study_config populates neither the flat restricted_end/restricted_end_date keys nor a windows block, so resolve_restricted_end additionally checks a nested windows.restricted_end path, ready for when Task 1 populates it",
+        "location": "resolve_restricted_end (Task 9)"
+      },
+      {
+        "id": "JC-averaging-window-config-check",
+        "field": "N/A (orchestrate_task_12)",
+        "manuscript_wording": "read the window from config (with the paper's default)",
+        "decision": "filter_averaging_window has no override parameter of its own, so orchestrate_task_12 reads module_M2_dependence.frechet_hoeffding.marginal_averaging_window as a consistency check against the fixed window it actually applies, rather than a live override",
+        "rationale": "filter_averaging_window has no override parameter of its own, so orchestrate_task_12 reads module_M2_dependence.frechet_hoeffding.marginal_averaging_window as a consistency check against the fixed window it actually applies, rather than a live override",
+        "location": "orchestrate_task_12 (Task 12)"
+      },
+      {
+        "id": "JC-universe-anchor-windows-path",
+        "field": "N/A (orchestrate_task_14)",
+        "manuscript_wording": "map config keys to the study config's windows block",
+        "decision": "Task 1's config declares the anchor at module_M6_optimization.universe_construction.anchor_date, not the flat anchor_a/anchor_a_date keys this function already checked, so that nested path is read as an additional fallback source, mapping the flat keys onto the real config location",
+        "rationale": "Task 1's config declares the anchor at module_M6_optimization.universe_construction.anchor_date, not the flat anchor_a/anchor_a_date keys this function already checked, so that nested path is read as an additional fallback source, mapping the flat keys onto the real config location",
+        "location": "orchestrate_task_14 (Task 14)"
+      },
+      {
+        "id": "JC-benchmark-report-opt-in",
+        "field": "N/A (validate_sector_intensity_benchmarks)",
+        "manuscript_wording": "persist the benchmark report",
+        "decision": "out_dir defaults to None, skipping persistence, so validate_sector_intensity_benchmarks stays side-effect free for any caller that has not opted in",
+        "rationale": "out_dir defaults to None, skipping persistence, so validate_sector_intensity_benchmarks stays side-effect free for any caller that has not opted in",
+        "location": "validate_sector_intensity_benchmarks (Task 15)"
+      },
+      {
+        "id": "JC-table2-ref-tolerance",
+        "field": "N/A (build_table_2)",
+        "manuscript_wording": "add a per-row reference join (sector, continent, gamma, p) with tolerance flags",
+        "decision": "No explicit tolerance is prescribed for this per-row comparison; 0.01 is used for both gamma and p-value deviations, comfortably exceeding the manuscript's own reported rounding precision",
+        "rationale": "No explicit tolerance is prescribed for this per-row comparison; 0.01 is used for both gamma and p-value deviations, comfortably exceeding the manuscript's own reported rounding precision",
+        "location": "build_table_2 (Task 18)"
+      },
+      {
+        "id": "JC-table3-ref-tolerance",
+        "field": "N/A (build_table_3)",
+        "manuscript_wording": "compare the eight reference rows with tolerances",
+        "decision": "No explicit tolerance is prescribed for this per-row comparison; 0.01 is used for both gamma and p-value deviations, mirroring Task 18's own Table 2 comparison",
+        "rationale": "No explicit tolerance is prescribed for this per-row comparison; 0.01 is used for both gamma and p-value deviations, mirroring Task 18's own Table 2 comparison",
+        "location": "build_table_3 (Task 20)"
+      },
+      {
+        "id": "JC-raw-dominance-non-psd",
+        "field": "N/A (compute_scenario_cevs)",
+        "manuscript_wording": "PSD is a stated premise, not a mandated check, for the raw entrywise dominance proof",
+        "decision": "The three raw-candidate calls in compute_scenario_cevs pass require_psd=False, since the raw dominance proof relies on entrywise monotonicity of the CEV quadratic form in rho under the alpha >= 0 premise already asserted there, not on positive semidefiniteness, and the Frechet-Hoeffding bound matrices are built entrywise by Task 13 with no guarantee of being PSD; every other caller of the shared correlation validator keeps the default-on PSD gate",
+        "rationale": "The three raw-candidate calls in compute_scenario_cevs pass require_psd=False, since the raw dominance proof relies on entrywise monotonicity of the CEV quadratic form in rho under the alpha >= 0 premise already asserted there, not on positive semidefiniteness, and the Frechet-Hoeffding bound matrices are built entrywise by Task 13 with no guarantee of being PSD; every other caller of the shared correlation validator keeps the default-on PSD gate",
+        "location": "compute_scenario_cevs (Task 27)"
+      },
+      {
+        "id": "JC-cev-empirical-turning-point",
+        "field": "N/A (render_figure_5)",
+        "manuscript_wording": "compute and annotate the empirical turning point (argmax of CEV and the first p > 0.5 crossing) against the manuscript's approximate 2010",
+        "decision": "No single series is prescribed for the CEV argmax signal; the mean CEV across the three strategies is used, with the first mean cross-continent probability crossing of 0.5 preferred when the probability panel is supplied",
+        "rationale": "No single series is prescribed for the CEV argmax signal; the mean CEV across the three strategies is used, with the first mean cross-continent probability crossing of 0.5 preferred when the probability panel is supplied",
+        "location": "render_figure_5 (Task 26)"
+      },
+      {
+        "id": "JC-orchestrator-labelled-inputs-required",
+        "field": "N/A (orchestrate_task_23, orchestrate_task_24)",
+        "manuscript_wording": "Tasks 23 and 24's own specifications say to ACCEPT labelled panels / labelled inputs",
+        "decision": "The specification's own verb 'accept' is implemented as 'require': an unlabelled array is a TypeError rather than a silently accepted, unverifiable positional array, because a positional array cannot prove its own continent order and a silently misaligned alpha or rho corrupts CEV with no error, the same risk the frozen-order digest exists to close",
+        "rationale": "The specification's own verb 'accept' is implemented as 'require': an unlabelled array is a TypeError rather than a silently accepted, unverifiable positional array, because a positional array cannot prove its own continent order and a silently misaligned alpha or rho corrupts CEV with no error, the same risk the frozen-order digest exists to close",
+        "location": "orchestrate_task_23 (Task 23); orchestrate_task_24 (Task 24)"
+      },
+      {
+        "id": "JC-per-firm-coverage-opt-in",
+        "field": "N/A (slice_rolling_monthly_window)",
+        "manuscript_wording": "prove per-firm 60-month coverage or apply a documented minimum-coverage threshold",
+        "decision": "The per-firm coverage floor defaults to 0.0 (off, only the pre-existing union-of-months check runs) rather than defaulting to strict full coverage, since a retroactive strict default could silently begin rejecting genuinely partial-coverage windows for existing callers that never asked for that guarantee; a caller opts in with min_coverage_ratio > 0.0",
+        "rationale": "The per-firm coverage floor defaults to 0.0 (off, only the pre-existing union-of-months check runs) rather than defaulting to strict full coverage, since a retroactive strict default could silently begin rejecting genuinely partial-coverage windows for existing callers that never asked for that guarantee; a caller opts in with min_coverage_ratio > 0.0",
+        "location": "slice_rolling_monthly_window (Task 28)"
+      },
+      {
+        "id": "JC-daily-grid-calendar-opt-in",
+        "field": "N/A (build_daily_wide_matrix)",
+        "manuscript_wording": "verify the day grid against the trading calendar",
+        "decision": "The trading calendar (Task 2's own table) is not always available to every caller of this function, so the proof is opt-in via an optional trading_calendar parameter, defaulting to None (skip), rather than a required argument that would break every existing positional caller",
+        "rationale": "The trading calendar (Task 2's own table) is not always available to every caller of this function, so the proof is opt-in via an optional trading_calendar parameter, defaulting to None (skip), rather than a required argument that would break every existing positional caller",
+        "location": "build_daily_wide_matrix (Task 28)"
+      },
+      {
+        "id": "JC-ledoit-wolf-rolling-window-scope",
+        "field": "N/A (estimate_ledoit_wolf_shrinkage)",
+        "manuscript_wording": "the rolling-window reading of the paper's remark that the shrunk covariance is 'calculated over the entire available dataset'",
+        "decision": "The paper's remark is read as describing the shrinkage TREATMENT applied to whatever covariance Task 28 supplies, not as overriding Task 28's own 5-year rolling-window construction of s_tau, since the Task specification's own Task 28 step 3 binds s_tau to 'Daily returns for the 5-year window' and inventing a second, full-history covariance pathway inside Task 29 would silently diverge from the one s_tau every other Task 28/31 caller relies on",
+        "rationale": "The paper's remark is read as describing the shrinkage TREATMENT applied to whatever covariance Task 28 supplies, not as overriding Task 28's own 5-year rolling-window construction of s_tau, since the Task specification's own Task 28 step 3 binds s_tau to 'Daily returns for the 5-year window' and inventing a second, full-history covariance pathway inside Task 29 would silently diverge from the one s_tau every other Task 28/31 caller relies on",
+        "location": "estimate_ledoit_wolf_shrinkage (Task 29)"
+      },
+      {
+        "id": "JC-mutation-sigma-fixed",
+        "field": "N/A (apply_mutation)",
+        "manuscript_wording": "the mutation scale does not decay with pm as it does in the Coello MOPSO lineage; undocumented as a judgment call",
+        "decision": "Algorithm 1 (Appendix C.2) does not define mutate() and neither it nor Appendix C.2 specifies a decaying Gaussian scale, so the scale is held fixed at MUTATION_SIGMA = 0.05 across every generation, matching the Task specification's own step description, rather than inventing an undocumented decay schedule the governing sources never specify",
+        "rationale": "Algorithm 1 (Appendix C.2) does not define mutate() and neither it nor Appendix C.2 specifies a decaying Gaussian scale, so the scale is held fixed at MUTATION_SIGMA = 0.05 across every generation, matching the Task specification's own step description, rather than inventing an undocumented decay schedule the governing sources never specify",
+        "location": "apply_mutation (Task 30)"
+      },
+      {
+        "id": "JC-mopso-vectorized-draw-order",
+        "field": "N/A (run_mopso_optimization)",
+        "manuscript_wording": "vectorise at generation level with a documented block draw order",
+        "decision": "Algorithm 1 (Appendix C.2) draws randomness per particle, sequentially, with a draw count that depends on that particle's own outcome (a mutation trigger gates a further Gaussian draw; a dominance tie gates a coin flip). A generation-level vectorisation cannot batch the arithmetic while also preserving that outcome-dependent consumption order, so fixed-size named blocks (leader, r1, r2, mutation trigger/noise via apply_mutation, acceptance coin, personal-best coin) are drawn once per generation in one fixed order instead, drawing the two coin blocks unconditionally for every particle rather than only for triggered or tied rows; this changes WHICH stream values each particle consumes relative to the strictly per-particle order, never the dominance rule, Table C.10 parameters, or the Task 1 generator",
+        "rationale": "Algorithm 1 (Appendix C.2) draws randomness per particle, sequentially, with a draw count that depends on that particle's own outcome (a mutation trigger gates a further Gaussian draw; a dominance tie gates a coin flip). A generation-level vectorisation cannot batch the arithmetic while also preserving that outcome-dependent consumption order, so fixed-size named blocks (leader, r1, r2, mutation trigger/noise via apply_mutation, acceptance coin, personal-best coin) are drawn once per generation in one fixed order instead, drawing the two coin blocks unconditionally for every particle rather than only for triggered or tied rows; this changes WHICH stream values each particle consumes relative to the strictly per-particle order, never the dominance rule, Table C.10 parameters, or the Task 1 generator",
+        "location": "run_mopso_optimization (Task 30)"
+      },
+      {
+        "id": "JC-mopso-repository-dedup",
+        "field": "N/A (deduplicate_repository)",
+        "manuscript_wording": "deduplicate exact duplicate portfolios before the grid is built",
+        "decision": "Algorithm 1 (Appendix C.2) is silent on duplicate portfolios entering the repository; an exact (bit-identical) duplicate weight vector inflates a single grid cell's occupancy without adding a genuinely distinct point to the frontier, so every duplicate after its first occurrence is dropped before each grid build, by position only, which changes multiplicity, never the Pareto set, leaving the dominance rule untouched",
+        "rationale": "Algorithm 1 (Appendix C.2) is silent on duplicate portfolios entering the repository; an exact (bit-identical) duplicate weight vector inflates a single grid cell's occupancy without adding a genuinely distinct point to the frontier, so every duplicate after its first occurrence is dropped before each grid build, by position only, which changes multiplicity, never the Pareto set, leaving the dominance rule untouched",
+        "location": "deduplicate_repository (Task 30)"
+      },
+      {
+        "id": "JC-marginality-tie-thresholds-invented",
+        "field": "N/A (select_mopso_configuration)",
+        "manuscript_wording": "INVENTED CONSTANTS: marginality = 0.5 and TIE_REL_TOLERANCE = 5% appear in neither source and are not disclosed as manuscript-absent defaults",
+        "decision": "Neither the paper (SS4.2/SS4.3) nor the Task specification gives a numeric marginality fraction or tie tolerance for the diminishing-returns level rule, so the values 0.5 and 0.05 are retained as documented invented defaults, and select_mopso_configuration reports a sensitivity table over MARGINALITY_SENSITIVITY_GRID showing which alternative marginality values would still select the documented anchor triple, so the default's fragility is auditable rather than silently assumed",
+        "rationale": "Neither the paper (SS4.2/SS4.3) nor the Task specification gives a numeric marginality fraction or tie tolerance for the diminishing-returns level rule, so the values 0.5 and 0.05 are retained as documented invented defaults, and select_mopso_configuration reports a sensitivity table over MARGINALITY_SENSITIVITY_GRID showing which alternative marginality values would still select the documented anchor triple, so the default's fragility is auditable rather than silently assumed",
+        "location": "select_mopso_configuration (Task 34)"
+      },
+      {
+        "id": "JC-selected-config-comparison-scope",
+        "field": "N/A (execute_anchor_mopso, orchestrate_task_35)",
+        "manuscript_wording": "Tasks 31 and 35 do not load the persisted selected configuration; neither the paper nor the Task specification specifies how a loaded document's parameters should be reconciled against the values each task actually uses",
+        "decision": "Tasks 31 and 35 each gained an optional selected_config_path keyword; when supplied, only the keys present in BOTH the persisted document and the hyperparameters in use are compared, by exact equality since these are provenance labels rather than numeric results needing a tolerance, and a disagreement is logged at WARNING, never FATAL, because the sweep is a reproduction that may legitimately land elsewhere on synthetic data; a supplied path that does not exist on disk is FATAL",
+        "rationale": "Tasks 31 and 35 each gained an optional selected_config_path keyword; when supplied, only the keys present in BOTH the persisted document and the hyperparameters in use are compared, by exact equality since these are provenance labels rather than numeric results needing a tolerance, and a disagreement is logged at WARNING, never FATAL, because the sweep is a reproduction that may legitimately land elsewhere on synthetic data; a supplied path that does not exist on disk is FATAL",
+        "location": "execute_anchor_mopso (Task 31); orchestrate_task_35 (Task 35)"
+      },
+      {
+        "id": "JC-loadings-order-check-conditional",
+        "field": "N/A (validate_backtest_inputs)",
+        "manuscript_wording": "firm_continent_loadings is required to be 'in universe order', but its index is never compared with firm_order; loadings should be indexed by firm_id with the index asserted equal to firm_order",
+        "decision": "The order proof is enforced only when the loadings index IS firm_id-labelled (set equal to firm_order); an unlabelled (default RangeIndex) input is still accepted positionally, since orchestrate_task_35's own guarded dual-mode contract (label-or-positional) already documents and relies on that fallback, and mandating labelling outright here would conflict with it",
+        "rationale": "The order proof is enforced only when the loadings index IS firm_id-labelled (set equal to firm_order); an unlabelled (default RangeIndex) input is still accepted positionally, since orchestrate_task_35's own guarded dual-mode contract (label-or-positional) already documents and relies on that fallback, and mandating labelling outright here would conflict with it",
+        "location": "validate_backtest_inputs (Task 35)"
+      },
+      {
+        "id": "JC-mopso-seed-default-harmony",
+        "field": "N/A (_resolve_mopso_seed)",
+        "manuscript_wording": "DEFAULT_MOPSO_SEED = 0 differs from Task 31 (seed 1) and from the sweep ensemble (1..10); neither the paper nor the Task specification names a single default seed shared across tasks",
+        "decision": "DEFAULT_MOPSO_SEED is changed from 0 to 1, harmonising it with Task 31's own DEFAULT_ANCHOR_SEED (1) and with the first member of the Task 33/34 sweep ensemble (1..10); this is a documented default-value choice, not a manuscript-specified constant, and only changes behaviour for a caller that never configures its own seed",
+        "rationale": "DEFAULT_MOPSO_SEED is changed from 0 to 1, harmonising it with Task 31's own DEFAULT_ANCHOR_SEED (1) and with the first member of the Task 33/34 sweep ensemble (1..10); this is a documented default-value choice, not a manuscript-specified constant, and only changes behaviour for a caller that never configures its own seed",
+        "location": "DEFAULT_MOPSO_SEED (Task 35)"
+      },
+      {
+        "id": "JC-table9-match-fraction-invented",
+        "field": "N/A (classify_deviation)",
+        "manuscript_wording": "the match threshold (MATCH_FRACTION = 25% of tolerance) appears in neither source and is not flagged as a judgment call",
+        "decision": "A documented judgment call: the strict inner 'match' band is set at one quarter of each metric's full METRIC_TOLERANCES band, since neither the manuscript nor the Task specification names a match fraction; only the inner match/tolerable split is invented, never the outer tolerable/mismatch boundary the tolerance policy itself already defines",
+        "rationale": "A documented judgment call: the strict inner 'match' band is set at one quarter of each metric's full METRIC_TOLERANCES band, since neither the manuscript nor the Task specification names a match fraction; only the inner match/tolerable split is invented, never the outer tolerable/mismatch boundary the tolerance policy itself already defines",
+        "location": "classify_deviation (Task 36)"
+      },
+      {
+        "id": "JC-table9-unit-sanity-threshold",
+        "field": "N/A (build_table9)",
+        "manuscript_wording": "add a unit sanity check on the reference frame (fractions versus percent); neither source states the reference block's units explicitly",
+        "decision": "A documented judgment call: a supplied reference frame's CAGR or MaxDD column logs a WARNING (never FATAL, since this is a sanity check, not a hard contract) when its worst absolute magnitude exceeds 1.5, since a fraction-bounded metric should never plausibly reach that scale, while a percent-scaled column routinely would",
+        "rationale": "A documented judgment call: a supplied reference frame's CAGR or MaxDD column logs a WARNING (never FATAL, since this is a sanity check, not a hard contract) when its worst absolute magnitude exceeds 1.5, since a fraction-bounded metric should never plausibly reach that scale, while a percent-scaled column routinely would",
+        "location": "build_table9 (Task 36)"
+      },
+      {
+        "id": "JC-tolerance-relative-bands-invented",
+        "field": "N/A (tolerance_for)",
+        "manuscript_wording": "30% relative bands for hypervolume, spacing, runtime and every coverage label (Equation_*, Table_*, ...) appear in no policy and are not flagged",
+        "decision": "The published 30% Gamma band is reused for RELATIVE_ONLY_METRICS and every coverage label prefix, since neither the manuscript nor the Task specification publishes a band for these entries; the SAME published fraction is applied rather than inventing a second, unrelated number",
+        "rationale": "The published 30% Gamma band is reused for RELATIVE_ONLY_METRICS and every coverage label prefix, since neither the manuscript nor the Task specification publishes a band for these entries; the SAME published fraction is applied rather than inventing a second, unrelated number",
+        "location": "tolerance_for (Task 39)"
+      },
+      {
+        "id": "JC-tolerance-zero-reference-nan",
+        "field": "N/A (tolerance_for)",
+        "manuscript_wording": "the relative-only bands collapse to zero when the reference is zero, so any non-zero deviation is a mismatch",
+        "decision": "An unfloored relative-only tolerance band (uppercase Gamma, RELATIVE_ONLY_METRICS, or a coverage label) returns NaN, not a false zero tolerance, when its reference is exactly zero, since a purely relative band is undefined against a zero reference rather than strict; the caller's classifier already treats a non-finite tolerance as unchecked, never FATAL",
+        "rationale": "An unfloored relative-only tolerance band (uppercase Gamma, RELATIVE_ONLY_METRICS, or a coverage label) returns NaN, not a false zero tolerance, when its reference is exactly zero, since a purely relative band is undefined against a zero reference rather than strict; the caller's classifier already treats a non-finite tolerance as unchecked, never FATAL",
+        "location": "tolerance_for (Task 39)"
+      },
+      {
+        "id": "JC-md-temperature_schema_column_name_collision",
+        "field": "raw_input_schemas.temperature_panel.columns",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "canonical df_temperature_raw columns continent, year_month, calendar_month, temperature_celsius (df_temperature_raw schema)",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at raw_input_schemas.temperature_panel.columns",
+        "location": "study inputs specification",
+        "md_register_entry": "temperature_schema_column_name_collision"
+      },
+      {
+        "id": "JC-md-missing_temperature_data_policy",
+        "field": "raw_input_schemas.temperature_panel.missing_data_policy.primary",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "drop_row_with_flag",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at raw_input_schemas.temperature_panel.missing_data_policy.primary",
+        "location": "study inputs specification",
+        "md_register_entry": "missing_temperature_data_policy"
+      },
+      {
+        "id": "JC-md-analysis_reference_date",
+        "field": "study_metadata.analysis_anchor_date",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "2020-01-01",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at study_metadata.analysis_anchor_date",
+        "location": "study inputs specification",
+        "md_register_entry": "analysis_reference_date"
+      },
+      {
+        "id": "JC-md-rng_seed_ensemble",
+        "field": "mopso_hyperparameters.rng_seed_ensemble",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at mopso_hyperparameters.rng_seed_ensemble",
+        "location": "study inputs specification",
+        "md_register_entry": "rng_seed_ensemble"
+      },
+      {
+        "id": "JC-md-hypervolume_reference_point",
+        "field": "mopso_hyperparameters.hypervolume_reference_point",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "[1.0, 1.0, 1.0]",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at mopso_hyperparameters.hypervolume_reference_point",
+        "location": "study inputs specification",
+        "md_register_entry": "hypervolume_reference_point"
+      },
+      {
+        "id": "JC-md-spacing_metric_definition",
+        "field": "mopso_hyperparameters.spacing_definition",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "std_of_nearest_neighbour_euclidean_distances_in_normalized_space",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at mopso_hyperparameters.spacing_definition",
+        "location": "study inputs specification",
+        "md_register_entry": "spacing_metric_definition"
+      },
+      {
+        "id": "JC-md-business_day_calendar",
+        "field": "global_design_constants.portfolio_universe_and_mechanics.rebalance_calendar_market",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "global_intersection",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at global_design_constants.portfolio_universe_and_mechanics.rebalance_calendar_market",
+        "location": "study inputs specification",
+        "md_register_entry": "business_day_calendar"
+      },
+      {
+        "id": "JC-md-sharpe_sortino_annualisation_factor",
+        "field": "global_design_constants.annualisation_convention.sharpe_annualisation_factor",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "12.0",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at global_design_constants.annualisation_convention.sharpe_annualisation_factor",
+        "location": "study inputs specification",
+        "md_register_entry": "sharpe_sortino_annualisation_factor"
+      },
+      {
+        "id": "JC-md-multiple_testing_policy",
+        "field": "global_design_constants.multiple_testing_policy.correction_method",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "none",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at global_design_constants.multiple_testing_policy.correction_method",
+        "location": "study inputs specification",
+        "md_register_entry": "multiple_testing_policy"
+      },
+      {
+        "id": "JC-md-hac_lag_rule",
+        "field": "module_M3_regressions.specification_1_extended_capm.HAC_lag_rule",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "floor(4*(T/100)^(2/9))",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at module_M3_regressions.specification_1_extended_capm.HAC_lag_rule",
+        "location": "study inputs specification",
+        "md_register_entry": "hac_lag_rule"
+      },
+      {
+        "id": "JC-md-hac_kernel",
+        "field": "module_M3_regressions.specification_1_extended_capm.HAC_kernel",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "bartlett",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at module_M3_regressions.specification_1_extended_capm.HAC_kernel",
+        "location": "study inputs specification",
+        "md_register_entry": "hac_kernel"
+      },
+      {
+        "id": "JC-md-shrinkage_target_F",
+        "field": "data_preprocessing_parameters.covariance_preprocessing.shrinkage_target_F",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "scaled_identity",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at data_preprocessing_parameters.covariance_preprocessing.shrinkage_target_F",
+        "location": "study inputs specification",
+        "md_register_entry": "shrinkage_target_F"
+      },
+      {
+        "id": "JC-md-simplex_projection_algorithm",
+        "field": "mopso_hyperparameters.simplex_projection_algorithm",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "duchi_2008_euclidean",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at mopso_hyperparameters.simplex_projection_algorithm",
+        "location": "study inputs specification",
+        "md_register_entry": "simplex_projection_algorithm"
+      },
+      {
+        "id": "JC-md-mutation_operator",
+        "field": "mopso_hyperparameters.mutation_operator",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "gaussian_perturbation_then_simplex_projection",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at mopso_hyperparameters.mutation_operator",
+        "location": "study inputs specification",
+        "md_register_entry": "mutation_operator"
+      },
+      {
+        "id": "JC-md-time_index_definition",
+        "field": "data_preprocessing_parameters.logistic_regression.time_index_definition",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "months_since_1940_01",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at data_preprocessing_parameters.logistic_regression.time_index_definition",
+        "location": "study inputs specification",
+        "md_register_entry": "time_index_definition"
+      },
+      {
+        "id": "JC-md-std_ddof_convention",
+        "field": "data_preprocessing_parameters.temperature_standardization.std_ddof_convention",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "1",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at data_preprocessing_parameters.temperature_standardization.std_ddof_convention",
+        "location": "study inputs specification",
+        "md_register_entry": "std_ddof_convention"
+      },
+      {
+        "id": "JC-md-baseline_endpoint_inclusion",
+        "field": "data_preprocessing_parameters.temperature_standardization.baseline_endpoint_inclusion",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "inclusive",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at data_preprocessing_parameters.temperature_standardization.baseline_endpoint_inclusion",
+        "location": "study inputs specification",
+        "md_register_entry": "baseline_endpoint_inclusion"
+      },
+      {
+        "id": "JC-md-within_region_selection_rule",
+        "field": "module_M6_optimization.universe_construction.within_region_selection_rule",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "top_cap_within_region",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at module_M6_optimization.universe_construction.within_region_selection_rule",
+        "location": "study inputs specification",
+        "md_register_entry": "within_region_selection_rule"
+      },
+      {
+        "id": "JC-md-segment_to_continent_mapping",
+        "field": "raw_input_schemas.segment_to_continent_map.default_mappings",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "default_mappings table, e.g. americas -> North America 0.5 / South America 0.5",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at raw_input_schemas.segment_to_continent_map.default_mappings",
+        "location": "study inputs specification",
+        "md_register_entry": "segment_to_continent_mapping"
+      },
+      {
+        "id": "JC-md-residual_revenue_assignment",
+        "field": "data_preprocessing_parameters.exposure_mapping.residual_revenue_assignment",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "proportional_to_disclosed_segments",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at data_preprocessing_parameters.exposure_mapping.residual_revenue_assignment",
+        "location": "study inputs specification",
+        "md_register_entry": "residual_revenue_assignment"
+      },
+      {
+        "id": "JC-md-fx_conversion_methodology",
+        "field": "data_preprocessing_parameters.return_aggregation.fx_conversion_before_aggregation",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "fx_conversion_before_aggregation = True; total_return_usd = (1 + total_return_local) * (fx_rate_t / fx_rate_{t-1}) - 1",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at data_preprocessing_parameters.return_aggregation.fx_conversion_before_aggregation",
+        "location": "study inputs specification",
+        "md_register_entry": "fx_conversion_methodology"
+      },
+      {
+        "id": "JC-md-corporate_action_adjustment_method",
+        "field": "raw_input_schemas.return_panel.columns.corporate_action_adjustment_method",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "recommended 'vendor_total_return' when using a commercial vendor's total return series, otherwise 'continuous_reinvestment'",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at raw_input_schemas.return_panel.columns.corporate_action_adjustment_method",
+        "location": "study inputs specification",
+        "md_register_entry": "corporate_action_adjustment_method"
+      },
+      {
+        "id": "JC-md-tangible_assets_interpretation",
+        "field": "data_preprocessing_parameters.exposure_mapping.tangible_assets_interpretation",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "narrow_excludes_intangibles_and_goodwill",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at data_preprocessing_parameters.exposure_mapping.tangible_assets_interpretation",
+        "location": "study inputs specification",
+        "md_register_entry": "tangible_assets_interpretation"
+      },
+      {
+        "id": "JC-md-sector_classification_scheme",
+        "field": "raw_input_schemas.firm_metadata.columns.sector_classification_scheme",
+        "manuscript_wording": "Listed in the judgment_calls_resolved register of the study inputs specification",
+        "decision": "recommended 'TRBC' (Refinitiv Business Classification)",
+        "rationale": "Resolved in the study inputs; the resolved value is recorded at raw_input_schemas.firm_metadata.columns.sector_classification_scheme",
+        "location": "study inputs specification",
+        "md_register_entry": "sector_classification_scheme"
+      }
+    ],
+    "non_stationarity_claim": "Physical climate risk is non-stationary and has intensified in recent decades.",
+    "positive_correlations_claim": "All cross-continental Pearson correlations of extreme events are positive, reflecting a common global warming driver.",
+    "bounded_correlation_claim": "Bernoulli correlations are bounded in [ρ_min, ρ_max]; pairwise bounds are necessary but not sufficient for K > 2.",
+    "return_materiality_claim": "Temperature extremes have a statistically significant negative effect on most sector returns; global Γ = -0.003, p = 0.0096.",
+    "diversifiability_decomposition": "CEV = idiosyncratic (Herfindahl) term + systemic (correlation) term; the systemic floor ρ·p·(1-p) is irreducible.",
+    "cev_non_monotonicity": "Because p(1-p) peaks at p=0.5, CEV declines as p rises above 0.5, even as CRE increases.",
+    "no_overparameterization": "Adding CEV to the mean-variance framework improves diversification.",
+    "transaction_cost_caveat": "The backtest excludes transaction costs, bid-ask spreads, and rebalancing costs; reported CAGRs are gross of these frictions.",
+    "universe_reduction_note": "Reduction to N=120 is for computational tractability; stratified by market cap and HQ location.",
+    "backend_and_runtime_note": "Runtime of 217.39 s per monthly optimization on Intel Core i5, 16 GB RAM, Windows 10 Pro, PyCharm 2025.2.3."
+  },
+  "coverage_verification": {
+    "Equation_01_standardization": "data_preprocessing_parameters.temperature_standardization",
+    "Equation_02_thresholding": "data_preprocessing_parameters.temperature_thresholding",
+    "Equation_03_logistic": "data_preprocessing_parameters.logistic_regression",
+    "Equation_04_frechet_hoeffding_theorem": "module_M2_dependence.frechet_hoeffding",
+    "Equation_05_rho_min": "module_M2_dependence.frechet_hoeffding.lower_bound_formula",
+    "Equation_06_rho_max": "module_M2_dependence.frechet_hoeffding.upper_bound_formula",
+    "Equation_07_p_bar": "module_M2_dependence.frechet_hoeffding.marginal_averaging_window",
+    "Equation_08_extended_capm": "module_M3_regressions.specification_1_extended_capm",
+    "Equation_09_sector_panel_fixed_effects": "module_M3_regressions.specification_2_sector_panel",
+    "Equation_10_global_panel": "module_M3_regressions.specification_3_global_panel",
+    "Equation_11_asset_intensity": "data_preprocessing_parameters.exposure_mapping",
+    "Equation_12_climate_normalized_weights": "data_preprocessing_parameters.exposure_mapping",
+    "Equation_13_CRE": "module_M5_metrics.CRE_formula",
+    "Equation_14_CEV_variance_form": "module_M5_metrics.CEV_formula_variance_form",
+    "Equation_15_covariance": "module_M5_metrics.covariance_formula",
+    "Equation_16_CEV_expanded": "module_M5_metrics.CEV_formula_expanded",
+    "Equation_17_idiosyncratic_limit": "module_M5_metrics.idiosyncratic_limit",
+    "Equation_18_systemic_limit": "module_M5_metrics.systemic_limit",
+    "Equation_19a_objectives": "module_M6_optimization.objective_functions",
+    "Equation_19b_budget": "module_M6_optimization.constraints.budget_constraint",
+    "Equation_19c_long_only": "module_M6_optimization.constraints.long_only_constraint",
+    "Equation_20_jaccard": "module_M6_optimization.jaccard_distance",
+    "Algorithm_1_MOPSO": "mopso_hyperparameters",
+    "Table_04_universe": "module_M6_optimization.universe_construction",
+    "Table_08_tilts": "module_M7_scalarization.tilt_configurations",
+    "Table_09_performance_metrics": "module_M8_backtest",
+    "Table_C_10_mopso_config": "mopso_hyperparameters",
+    "Ledoit_Wolf_shrinkage": "module_M6_optimization.covariance_estimation",
+    "Backtest_rolling_window": "module_M8_backtest",
+    "Diagnostics_reporting": "diagnostics_and_reporting",
+    "Plot_construction": "plot_construction",
+    "Absence_declarations": "explicitly_absent_components"
+  }
+}
