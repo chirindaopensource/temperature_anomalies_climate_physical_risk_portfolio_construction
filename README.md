@@ -137,7 +137,7 @@ The study combines climatology, probability theory (dependence between Bernoulli
 The data are Our World in Data's monthly mean temperatures from 1940-01 to 2025-04 for six continents: North America, South America, Europe, Africa, Asia and Oceania. Antarctica is excluded. For each continent $`k`$ and calendar month $`m`$, the mean $`\mu_{k,m}`$ and standard deviation $`\sigma_{k,m}`$ are taken over the 1960–1990 baseline. The raw temperature $`T_{k,t}`$ becomes
 
 ```math
-Z_{k,t} = \frac{T_{k,t} - \mu_{k,m}}{\sigma_{k,m}}, \tag{1}
+Z_{k,t} = \frac{T_{k,t} - \mu_{k,m}}{\sigma_{k,m}}, \qquad (1)
 ```
 
 where $`m`$ is the calendar month of $`t`$.
@@ -147,7 +147,7 @@ where $`m`$ is the calendar month of $`t`$.
 An extreme event is a standardised anomaly above 2:
 
 ```math
-B_{k,t} = \begin{cases} 1 & \text{if } Z_{k,t} > 2 \\ 0 & \text{otherwise} \end{cases}. \tag{2}
+B_{k,t} = \begin{cases} 1 & \text{if } Z_{k,t} > 2 \\ 0 & \text{otherwise} \end{cases}. \qquad (2)
 ```
 
 Under a Gaussian, this is the upper tail $`1 - \Phi(2)`$, about the top 2.28 % of observations.
@@ -157,7 +157,7 @@ Under a Gaussian, this is the upper tail $`1 - \Phi(2)`$, about the top 2.28 % o
 The time-varying probability $`p_{k,t}`$ of an extreme event is modelled continent by continent:
 
 ```math
-\mathrm{logit}(p_{k,t}) = \ln\left( \frac{p_{k,t}}{1 - p_{k,t}} \right) = \beta_{0,k} + \beta_{1,k}t + \beta_{2,k}t^2. \tag{3}
+\mathrm{logit}(p_{k,t}) = \ln\left( \frac{p_{k,t}}{1 - p_{k,t}} \right) = \beta_{0,k} + \beta_{1,k}t + \beta_{2,k}t^2. \qquad (3)
 ```
 
 $`\beta_{1,k}`$ captures the linear progression of risk, and $`\beta_{2,k}`$ whether the frequency of extremes is accelerating or decelerating. Table 1 of the paper reports the discrimination of the fit estimated on 1940–2025:
@@ -178,23 +178,23 @@ Figure 2 of the paper compares, for Europe and North America, the fit on the res
 The dependence between continents is measured by the Pearson correlation of $`B_{i,t}`$ and $`B_{j,t}`$. The paper reports values that are all positive and lie between 0 and 0.48. Because the indicators are Bernoulli, their correlation is bounded. For random variables $`X_1, X_2`$ with distribution functions $`F_1, F_2`$ and $`U \sim \mathrm{Unif}([0, 1])`$, the Fréchet–Hoeffding theorem gives
 
 ```math
-\mathrm{corr}\big(F_1^{-1}(U), F_2^{-1}(1 - U)\big) \le \mathrm{corr}(X_1, X_2) \le \mathrm{corr}\big(F_1^{-1}(U), F_2^{-1}(U)\big). \tag{4}
+\mathrm{corr}\big(F_1^{-1}(U), F_2^{-1}(1 - U)\big) \le \mathrm{corr}(X_1, X_2) \le \mathrm{corr}\big(F_1^{-1}(U), F_2^{-1}(U)\big). \qquad (4)
 ```
 
 For $`X_1 \sim \mathrm{Bern}(p_1)`$ and $`X_2 \sim \mathrm{Bern}(p_2)`$ this yields the closed forms
 
 ```math
-\rho_{\min} = \frac{\max(0, p_1 + p_2 - 1) - p_1 p_2}{\sqrt{p_1(1 - p_1)}\sqrt{p_2(1 - p_2)}} \tag{5}
+\rho_{\min} = \frac{\max(0, p_1 + p_2 - 1) - p_1 p_2}{\sqrt{p_1(1 - p_1)}\sqrt{p_2(1 - p_2)}} \qquad (5)
 ```
 
 ```math
-\rho_{\max} = \frac{\min(p_1, p_2) - p_1 p_2}{\sqrt{p_1(1 - p_1)}\sqrt{p_2(1 - p_2)}}. \tag{6}
+\rho_{\max} = \frac{\min(p_1, p_2) - p_1 p_2}{\sqrt{p_1(1 - p_1)}\sqrt{p_2(1 - p_2)}}. \qquad (6)
 ```
 
 Since $`p_{k,t}`$ changes over time, the bounds are evaluated at the time-averaged probability over the 1940–2020 training horizon:
 
 ```math
-\bar{p}_k = \frac{1}{T}\sum_{t=1}^T \hat{p}_{k,t}. \tag{7}
+\bar{p}_k = \frac{1}{T}\sum_{t=1}^T \hat{p}_{k,t}. \qquad (7)
 ```
 
 > **Pairwise versus joint admissibility.** The bounds (5)–(6) are pairwise. For a multivariate Bernoulli distribution of more than two variables, further constraints apply (Huber and Marić, 2015, 2019). These constraints generally have no closed form beyond four variables, and this study has six. The pairwise bounds are therefore necessary, not sufficient, conditions.
@@ -204,7 +204,7 @@ Since $`p_{k,t}`$ changes over time, the bounds are evaluated at the time-averag
 Sector returns $`R_{s,t}`$ are market-cap-weighted averages of the total returns of MSCI World constituents. Banks, financials and insurers are excluded. For every sector $`s`$ and continent $`k`$, the climate-augmented CAPM is estimated over 2004–2025 with Newey–West HAC standard errors:
 
 ```math
-R_{s,k,t} - R_{f,t} = \alpha_{s,k} + \beta_{MKT,s,k}(R_{MKT,t} - R_{f,t}) + \gamma_{s,k}B_{k,t} + \epsilon_{s,k,t}. \tag{8}
+R_{s,k,t} - R_{f,t} = \alpha_{s,k} + \beta_{MKT,s,k}(R_{MKT,t} - R_{f,t}) + \gamma_{s,k}B_{k,t} + \epsilon_{s,k,t}. \qquad (8)
 ```
 
 The sector panel adds month and continent fixed effects:
@@ -213,7 +213,7 @@ The sector panel adds month and continent fixed effects:
 \begin{aligned}
 R_{s,k,t} - R_{f,t} = {} & \alpha_s + \beta_{MKT,s}(R_{MKT,t} - R_{f,t}) + \gamma_s B_{k,t} \\
 & + \text{FE}_{\text{month}} + \text{FE}_{\text{continent}} + \epsilon_{s,k,t}.
-\end{aligned} \tag{9}
+\end{aligned} \qquad (9)
 ```
 
 The global panel pools all sectors and continents:
@@ -222,7 +222,7 @@ The global panel pools all sectors and continents:
 \begin{aligned}
 R_{s,k,t} - R_{f,t} = {} & \alpha + \beta_{MKT}(R_{MKT,t} - R_{f,t}) + \Gamma B_{k,t} \\
 & + \text{FE}_{\text{month}} + \text{FE}_{\text{continent}} + \epsilon_{s,k,t}.
-\end{aligned} \tag{10}
+\end{aligned} \qquad (10)
 ```
 
 The implementation estimates Equations (9) and (10) under one shared run identifier. `run_two_scope_panel_fe_driver` enforces this, and each scope cross-checks the other's run identifier and data fingerprint.
@@ -234,13 +234,13 @@ The implementation estimates Equations (9) and (10) under one shared run identif
 A firm's physical vulnerability is its asset intensity:
 
 ```math
-AI_i = \frac{\text{Tangible Assets}_i}{\text{Revenue}_i}. \tag{11}
+AI_i = \frac{\text{Tangible Assets}_i}{\text{Revenue}_i}. \qquad (11)
 ```
 
 The paper reports the highest sector average for Real Estate (10.6) and the lowest for Retailers (0.6). With $`S_{i,k}`$ the revenue that firm $`i`$ earns in continent $`k`$, the climate-normalised portfolio weight of continent $`k`$ is
 
 ```math
-\alpha_k(\boldsymbol{w}) = \frac{\sum_{i=1}^N w_i \cdot AI_i \cdot S_{i,k}}{\sum_{k=1}^K \sum_{i=1}^N w_i \cdot AI_i \cdot S_{i,k}}. \tag{12}
+\alpha_k(\mathbf{w}) = \frac{\sum_{i=1}^N w_i \cdot AI_i \cdot S_{i,k}}{\sum_{k=1}^K \sum_{i=1}^N w_i \cdot AI_i \cdot S_{i,k}}. \qquad (12)
 ```
 
 ### 7. Climate Risk Exposure and Climate Exposure Volatility (Equations 13–16)
@@ -248,16 +248,16 @@ The paper reports the highest sector average for Real Estate (10.6) and the lowe
 CRE is the expected climate exposure of the portfolio at time $`t`$:
 
 ```math
-\text{CRE}(\boldsymbol{w}, t) = \mathbb{E}\left[\sum_{k=1}^K \alpha_k(\boldsymbol{w}) B_{k,t}\right] = \sum_{k=1}^K \alpha_k(\boldsymbol{w})\, p_{k,t}. \tag{13}
+\text{CRE}(\mathbf{w}, t) = \mathbb{E}\left[\sum_{k=1}^K \alpha_k(\mathbf{w}) B_{k,t}\right] = \sum_{k=1}^K \alpha_k(\mathbf{w})\, p_{k,t}. \qquad (13)
 ```
 
 CEV is the variance of that exposure:
 
 ```math
 \begin{aligned}
-\text{CEV}(\boldsymbol{w}, t) &= \mathrm{Var}\left(\sum_{k=1}^K \alpha_k(\boldsymbol{w}) B_{k,t}\right) \\
+\text{CEV}(\mathbf{w}, t) &= \mathrm{Var}\left(\sum_{k=1}^K \alpha_k(\mathbf{w}) B_{k,t}\right) \\
 &= \sum_{k=1}^K \alpha_k^2\, \mathrm{Var}(B_{k,t}) + 2\sum_{k < j} \alpha_k \alpha_j\, \mathrm{Cov}(B_{k,t}, B_{j,t}),
-\end{aligned} \tag{14}
+\end{aligned} \qquad (14)
 ```
 
 with $`\mathrm{Var}(B_{k,t}) = p_{k,t}(1 - p_{k,t})`$ and
@@ -266,16 +266,16 @@ with $`\mathrm{Var}(B_{k,t}) = p_{k,t}(1 - p_{k,t})`$ and
 \begin{aligned}
 \mathrm{Cov}(B_{k,t}, B_{j,t}) &= \rho_{k,j}\sqrt{\mathrm{Var}(B_{k,t})\,\mathrm{Var}(B_{j,t})} \\
 &= \rho_{k,j}\sqrt{p_{k,t}(1 - p_{k,t})\,p_{j,t}(1 - p_{j,t})}.
-\end{aligned} \tag{15}
+\end{aligned} \qquad (15)
 ```
 
 Substituting gives the closed form that the code evaluates:
 
 ```math
 \begin{aligned}
-\text{CEV}(\boldsymbol{w}, t) = {} & \sum_{k=1}^K \alpha_k^2\, p_{k,t}(1 - p_{k,t}) \\
+\text{CEV}(\mathbf{w}, t) = {} & \sum_{k=1}^K \alpha_k^2\, p_{k,t}(1 - p_{k,t}) \\
 & + 2\sum_{k < j} \alpha_k \alpha_j \rho_{k,j}\sqrt{p_{k,t}(1 - p_{k,t})\,p_{j,t}(1 - p_{j,t})}.
-\end{aligned} \tag{16}
+\end{aligned} \qquad (16)
 ```
 
 The first term is Herfindahl-like: it measures the geographic dispersion of risk and, for uniform probabilities, is smallest when $`\alpha_k = 1/K`$. The second term is systemic: correlated extremes in continents where the portfolio is heavily exposed raise its volatility. The decline of CEV after about 2010 follows from the Bernoulli variance $`p(1-p)`$, which peaks at $`p = 0.5`$. Once several $`p_{k,t}`$ exceed 0.5 and keep rising, the variance falls even though the expected frequency of extremes stays high.
@@ -285,7 +285,7 @@ The first term is Herfindahl-like: it measures the geographic dispersion of risk
 With $`\alpha_k = 1/K`$, $`p_k = p`$ and $`\rho_{k,j} = \rho`$, the idiosyncratic term vanishes as the number of regions grows:
 
 ```math
-\sum_{k=1}^K \left(\frac{1}{K}\right)^2 p(1 - p) = \frac{1}{K} p(1 - p) \;\to\; 0, \tag{17}
+\sum_{k=1}^K \left(\frac{1}{K}\right)^2 p(1 - p) = \frac{1}{K} p(1 - p) \;\to\; 0, \qquad (17)
 ```
 
 but the systemic term does not:
@@ -294,7 +294,7 @@ but the systemic term does not:
 \begin{aligned}
 2\sum_{k < j} \frac{1}{K^2}\rho p(1 - p) &= 2 \frac{K(K - 1)}{2}\frac{1}{K^2}\rho p(1 - p) \\
 &= \left(1 - \frac{1}{K}\right)\rho p(1 - p) \;\to\; \rho p(1 - p).
-\end{aligned} \tag{18}
+\end{aligned} \qquad (18)
 ```
 
 Finer geographic granularity removes local dispersion but cannot remove the risk that comes from the correlation of climate events.
@@ -305,13 +305,13 @@ The universe is $`N = 120`$ stocks, stratified by headquarters region as in Tabl
 
 ```math
 \begin{aligned}
-\min_{\boldsymbol{w}} \quad & F(\boldsymbol{w}) = [f_1(\boldsymbol{w}), f_2(\boldsymbol{w}), f_3(\boldsymbol{w})]^\top && \text{(19a)} \\
-\text{s.t.} \quad & \textstyle\sum_{i=1}^{120} w_i = 1, && \text{(19b)} \\
+\min_{\mathbf{w}} \quad & F(\mathbf{w}) = [f_1(\mathbf{w}), f_2(\mathbf{w}), f_3(\mathbf{w})]^\top && \text{(19a)} \\
+\text{s.t.} \quad & \sum_{i=1}^{120} w_i = 1, && \text{(19b)} \\
 & w_i \ge 0, \quad \forall i = 1, \dots, 120, && \text{(19c)}
 \end{aligned}
 ```
 
-with $`f_1(\boldsymbol{w}) = -\boldsymbol{w}^\top \boldsymbol{r}`$, $`f_2(\boldsymbol{w}) = \boldsymbol{w}^\top \boldsymbol{\Sigma}\boldsymbol{w}`$ and $`f_3(\boldsymbol{w}) = \text{CEV}(\boldsymbol{w})`$. The covariance is conditioned with Ledoit–Wolf shrinkage so that its condition number is below 1,000, and the CEV objective is evaluated in matrix form rather than with loops.
+with $`f_1(\mathbf{w}) = -\mathbf{w}^\top \mathbf{r}`$, $`f_2(\mathbf{w}) = \mathbf{w}^\top \mathbf{\Sigma}\mathbf{w}`$ and $`f_3(\mathbf{w}) = \text{CEV}(\mathbf{w})`$. The covariance is conditioned with Ledoit–Wolf shrinkage so that its condition number is below 1,000, and the CEV objective is evaluated in matrix form rather than with loops.
 
 The MOPSO of Algorithm 1 (Appendix C.2) keeps an external repository of non-dominated portfolios. It partitions the objective space into a grid of $`N_{grid}`$ cells per dimension, with the bounds inflated by $`dc = (s_{\max} - s_{\min}) \cdot \alpha`$. Leaders are selected with pressure $`\beta`$, and repository members are deleted with pressure $`\gamma`$. Each particle's velocity is updated as
 
@@ -334,7 +334,7 @@ Table C.10 fixes the configuration: $`N_{pop} = 500`$, $`\text{Iter} = 300`$, $`
 A weight below $`10^{-3}`$ is treated as zero when counting active positions. The structural distance between two frontier portfolios is the continuous Jaccard distance
 
 ```math
-d_J(\boldsymbol{x}, \boldsymbol{y}) = 1 - \frac{\sum_i \min(x_i, y_i)}{\sum_i \max(x_i, y_i)}. \tag{20}
+d_J(\mathbf{x}, \mathbf{y}) = 1 - \frac{\sum_i \min(x_i, y_i)}{\sum_i \max(x_i, y_i)}. \qquad (20)
 ```
 
 The frontier is also sliced into variance intervals, and each slice is projected onto the (CEV, expected return) plane with a parabolic fit (Figure 9).
@@ -343,10 +343,10 @@ In the backtest (2020-01-01 to 2025-04-30), the frontier is re-optimised on the 
 
 > **Registered divergence (Sharpe and Sortino annualisation).** The code computes Sharpe as $`12 \cdot \text{mean}(r) / \text{std}(r)`$ and Sortino with the same factor. The factor 12.0 comes from `config.yaml`, where the study-inputs specification chose it (`JC-md-sharpe_sortino_annualisation_factor`). The conventional annualisation multiplies by $`\sqrt{12}`$, so the reproduced ratios are $`\sqrt{12} \approx 3.46`$ times the conventional annualised values that the paper's Table 9 magnitudes suggest. The embedded usage example explains how to switch to $`\sqrt{12}`$.
 
+Below is a diagram which summarizes the proposed approach:
+
 <div align="center">
-  <a href="https://github.com/chirindaopensource/temperature_anomalies_climate_physical_risk_portfolio_construction/blob/main/temperature_anomalies_climate_physical_risk_portfolio_construction_ipo_main.png">
-    <img src="https://raw.githubusercontent.com/chirindaopensource/temperature_anomalies_climate_physical_risk_portfolio_construction/main/temperature_anomalies_climate_physical_risk_portfolio_construction_ipo_main.png" alt="Inputs, processes and outputs of the physical climate risk pipeline: temperatures to anomalies, extreme-event probabilities, dependence, CRE and CEV, MOPSO Pareto frontier and backtest" width="100%">
-  </a>
+  <img src="https://raw.githubusercontent.com/chirindaopensource/temperature_anomalies_climate_physical_risk_portfolio_construction/main/temperature_anomalies_climate_physical_risk_portfolio_construction_ipo_main.png" alt="Temperature Anomalies and Climate Physical Risk in Portfolio Construction — Project Overview" width="100%">
 </div>
 
 ## Features
@@ -391,13 +391,13 @@ Each task below names its orchestrator and its exact cell title.
 19. **Task 19, Panel-FE Estimation Orchestrator Construction** (`orchestrate_task_19`). The shared estimator for Equations (9)–(10): 11 month and 5 continent dummies, Driscoll–Kraay errors, and a fingerprint and `run_id` sidecar that is cross-checked between scopes.
 20. **Task 20, Sector Panel with Two-Way Fixed Effects (Equation 9, Table 3)** (`orchestrate_task_20`). Runs the sector-level scope and writes Table 3 with notes on sectors that gained or lost significance relative to Table 2.
 21. **Task 21, Global Pooled Panel (Equation 10)** (`orchestrate_task_21`, plus `run_two_scope_panel_fe_driver`). Estimates $`\Gamma`$, compares it with $`-0.003`$ and $`p = 0.0096`$ and attaches an associational caveat. The driver runs Tasks 20 and 21 under one `run_id`.
-22. **Task 22, Climate-Normalized Continental Weight Computation (Equation 12)** (`orchestrate_task_22`). Forms $`AI_i \cdot S_{i,k}`$ in the verified frozen order, computes $`\alpha_k(\boldsymbol w)`$, checks degree-zero homogeneity and persists the market-cap benchmark $`\alpha`$.
+22. **Task 22, Climate-Normalized Continental Weight Computation (Equation 12)** (`orchestrate_task_22`). Forms $`AI_i \cdot S_{i,k}`$ in the verified frozen order, computes $`\alpha_k(\mathbf{w})`$, checks degree-zero homogeneity and persists the market-cap benchmark $`\alpha`$.
 23. **Task 23, CRE Computation (Equation 13)** (`orchestrate_task_23`). Evaluates CRE as a snapshot and as a full series through one matrix–vector product, and requires the two paths to agree.
 24. **Task 24, CEV Computation (Equations 14-16)** (`orchestrate_task_24`). Builds $`V = \mathrm{diag}(v)\,\rho\,\mathrm{diag}(v)`$ with $`v_k = \sqrt{p_k(1-p_k)}`$, validates $`\rho`$ and $`\alpha`$, evaluates all periods in one contraction and enforces $`0 \le \text{CEV} \le 0.25`$.
 25. **Task 25, Asymptotic Analysis (Equations 17-18)** (`orchestrate_task_25`). Verifies both closed forms at $`K = 6`$ and $`K = 10{,}000`$ against direct enumeration and the Task 24 engine.
 26. **Task 26, CEV Strategy Comparison (Figure 5)** (`orchestrate_task_26`). Compares the cap-weighted benchmark with the equal and inverse-risk continental allocations and checks their CEV ordering (Figure 5).
 27. **Task 27, CEV Correlation Stress Testing (Figure 6)** (`orchestrate_task_27`). Recomputes the benchmark CEV under the empirical, minimum-bound and maximum-bound correlation matrices. The ordering is proved on the raw matrices; magnitudes are reported after PSD projection (Figure 6).
-28. **Task 28, Rolling Estimation of Expected Returns and Covariance** (`orchestrate_task_28`). Estimates $`\boldsymbol r_\tau`$ from the preceding 60 monthly returns and the sample covariance from the same five years of daily returns.
+28. **Task 28, Rolling Estimation of Expected Returns and Covariance** (`orchestrate_task_28`). Estimates $`\mathbf{r}_\tau`$ from the preceding 60 monthly returns and the sample covariance from the same five years of daily returns.
 29. **Task 29, Ledoit-Wolf Shrinkage and Conditioning** (`orchestrate_task_29`). Shrinks towards a scaled identity with the Ledoit–Wolf intensity $`\delta^{\ast}`$, raising $`\delta`$ if needed until $`\lambda_{\min} > 0`$ and $`\kappa_2 < 1000`$.
 30. **Task 30, MOPSO Orchestrator Function Construction** (`run_mopso_optimization`; there is no `orchestrate_task_30`). The Algorithm 1 engine: batch objective evaluation, simplex repair, and repository, grid, leader and pruning logic. It returns the Pareto archive, the convergence trace and the optimiser runtime.
 31. **Task 31, MOPSO Execution and Pareto Frontier (Figure 7)** (`orchestrate_task_31`). Assembles the 2020-01-01 anchor inputs, with probabilities from 2019-12, runs the engine, compares the runtime with 217.39 s and draws Figure 7.
@@ -406,7 +406,7 @@ Each task below names its orchestrator and its exact cell title.
 34. **Task 34, Hyperparameter Sweep Execution (Tables 5-7)** (`orchestrate_task_34`). Proves log coverage, splits the results into Tables 5–7, compares them with the paper and selects the configuration by a diminishing-returns rule.
 35. **Task 35, Backtest Orchestrator Function Construction** (`orchestrate_task_35`). Runs the 64 monthly re-optimisations: logit refit, rolling moments, shrinkage, correlation update, seeded MOPSO and strategy selection, with checkpoints.
 36. **Task 36, Backtest Execution (Table 9, Figure 10)** (`orchestrate_task_36`). Assembles the eleven-row Table 9, compares it cell by cell with the paper and draws Figure 10 with a cost caveat.
-37. **Task 37, Appendix B CRE-Variant Orchestrator Construction** (`orchestrate_task_37`, plus `run_mopso_optimization_cre`). Runs the engine with CRE as the third objective and proves on the archive that column 3 equals $`\sum_k \alpha_k(\boldsymbol w) p_k`$.
+37. **Task 37, Appendix B CRE-Variant Orchestrator Construction** (`orchestrate_task_37`, plus `run_mopso_optimization_cre`). Runs the engine with CRE as the third objective and proves on the archive that column 3 equals $`\sum_k \alpha_k(\mathbf{w}) p_k`$.
 38. **Task 38, Appendix B Execution (Figures B.11-B.12)** (`orchestrate_task_38`). Runs the CRE variant at the anchor, checks input parity with Task 31 when snapshot paths are supplied, and draws Figures B.11a, B.11b and B.12.
 39. **Task 39, Final Reporting and Reproducibility Package** (`orchestrate_task_39`). Inventories the artifacts with SHA-256 digests, verifies the equations against fixtures, reconciles the judgment calls and writes the report and the `tar.gz` bundle.
 40. **Task 40, Top-Level End-to-End Research Pipeline Orchestrator** (`run_research_pipeline`). Resolves the canonical 38-stage order, validates the per-stage inputs, runs each stage's orchestrator once and persists the pipeline manifest.
@@ -2631,9 +2631,9 @@ A["task_21"] = run_stage(21, {
 
 #### Step 3.6: Stages 22–27: climate-normalised weights, CRE and CEV (Equations 12–18)
 
-- **Stage 22:** $\alpha_k(\boldsymbol w) = \sum_i w_i AI_i S_{i,k} \big/ \sum_{k'}\sum_i w_i AI_i S_{i,k'}$ for the cap-weighted benchmark (Equation 12).
+- **Stage 22:** $\alpha_k(\mathbf{w}) = \sum_i w_i AI_i S_{i,k} \big/ \sum_{k'}\sum_i w_i AI_i S_{i,k'}$ for the cap-weighted benchmark (Equation 12).
 - **Stage 23:** CRE, $\sum_k \alpha_k \hat p_{k,t}$.
-- **Stage 24:** CEV, $\sqrt{\boldsymbol\alpha^\top \boldsymbol\Sigma^B_t \boldsymbol\alpha}$ with $\Sigma^B_{kj,t} = \rho_{kj}\sqrt{p_{k,t}(1-p_{k,t})\,p_{j,t}(1-p_{j,t})}$ (Equations 14–16).
+- **Stage 24:** CEV, $\sqrt{\mathbf{\a}lpha^\top \mathbf{\S}igma^B_t \mathbf{\a}lpha}$ with $\Sigma^B_{kj,t} = \rho_{kj}\sqrt{p_{k,t}(1-p_{k,t})\,p_{j,t}(1-p_{j,t})}$ (Equations 14–16).
 - **Stage 25:** the idiosyncratic and systemic limits (Equations 17–18).
 - **Stage 26:** the three-strategy comparison of Figure 5.
 - **Stage 27:** the $\rho_{\min}$ / empirical / $\rho_{\max}$ stress scenarios of Figure 6.
@@ -2724,8 +2724,8 @@ The program solved is:
 
 ```math
 \begin{aligned}
-\min_{\boldsymbol w}\quad & \big(-\boldsymbol w^\top \boldsymbol r_\tau,\ \boldsymbol w^\top \Sigma_\tau \boldsymbol w,\ \text{CEV}_\tau(\boldsymbol w)\big) \\
-\text{s.t.}\quad & \boldsymbol 1^\top \boldsymbol w = 1,\ \boldsymbol w \ge 0.
+\min_{\mathbf{w}}\quad & \big(-\mathbf{w}^\top \mathbf{r}_\tau,\ \mathbf{w}^\top \Sigma_\tau \mathbf{w},\ \text{CEV}_\tau(\mathbf{w})\big) \\
+\text{s.t.}\quad & \mathbf{1}^\top \mathbf{w} = 1,\ \mathbf{w} \ge 0.
 \end{aligned}
 ```
 
@@ -2789,7 +2789,7 @@ A["task_34"] = run_stage(34, {
 
 #### Step 3.10: Stages 35–36: the monthly re-optimised backtest (Section 5, Table 9, Figure 10)
 
-The backtest re-estimates $\boldsymbol r_\tau$ and $\Sigma_\tau$ on the first business day of each month from 2020-01 to 2025-04, which is 64 rebalances. It refreshes $\hat p_{k,\tau-1}$, re-optimises, and evaluates 11 strategies, gross of costs:
+The backtest re-estimates $\mathbf{r}_\tau$ and $\Sigma_\tau$ on the first business day of each month from 2020-01 to 2025-04, which is 64 rebalances. It refreshes $\hat p_{k,\tau-1}$, re-optimises, and evaluates 11 strategies, gross of costs:
 - the two benchmarks;
 - three corner portfolios;
 - the six Table 8 tilts.
@@ -3203,7 +3203,7 @@ The results of Stages 31–38 depend on the MOPSO settings.
 5. **Climate signal (Stages 1–13).** Validation and cleansing come first. Then come the baseline moments, $Z_{k,t}$ (Equation 1), $B_{k,t}$ (Equation 2), the quadratic-trend logit $\hat p_{k,t}$ (Equation 3) with AUROC/AUPR (Table 1), the empirical correlations, $\bar p_k$ (Equation 7) and the Fréchet–Hoeffding bounds (Equations 5–6).
 6. **Econometrics (Stages 14–21).** These produce the survivorship-controlled universe (Table 4), $AI_i$ (Equation 11) and $S_{i,k}$, and the excess returns. Equations (8)–(10) are estimated under a shared two-scope `run_id`, giving Tables 2–3 and $\Gamma$.
 7. **Climate metrics (Stages 22–27).** Stage 22 computes $\alpha_k$ (Equation 12). Stages 23–27 compute CRE and CEV (Equations 13–16), the asymptotic limits (Equations 17–18), the strategy comparison (Figure 5, recorded with `report_only`) and the correlation stress scenarios (Figure 6).
-8. **Optimisation (Stages 28–34, 37–38).** Stages 28–29 give the rolling $\boldsymbol r_\tau$ and the Ledoit–Wolf $\Sigma_\tau$. Stage 31 solves the anchor three-objective MOPSO (Equations 19a–19c, Algorithm 1, Figure 7). Stage 32 produces the frontier diagnostics (Figures 8–9), Stages 33–34 the hyperparameter sweep (Tables 5–7, C.10), and Stages 37–38 the Appendix B CRE variant (Figures B.11–B.12).
+8. **Optimisation (Stages 28–34, 37–38).** Stages 28–29 give the rolling $\mathbf{r}_\tau$ and the Ledoit–Wolf $\Sigma_\tau$. Stage 31 solves the anchor three-objective MOPSO (Equations 19a–19c, Algorithm 1, Figure 7). Stage 32 produces the frontier diagnostics (Figures 8–9), Stages 33–34 the hyperparameter sweep (Tables 5–7, C.10), and Stages 37–38 the Appendix B CRE variant (Figures B.11–B.12).
 9. **Backtest (Stages 35–36).** There are 64 monthly re-optimisations of 11 strategies, producing Table 9, compared cell by cell with the manuscript, and Figure 10, gross of costs.
 10. **Reporting (Stage 39).** This stage produces the canonical report, the equation and artifact verification, the environment record, a README whose task registry is derived from the notebook's own task cells, and the `reproducibility_bundle.tar.gz` archive. It needs the full sweep for Tables 5–7 and C.10.
 11. **Verification.** Every code block of this document was executed in order against the notebook, in a sandboxed directory that contained only the notebook and `config.yaml`, with `CLIMATE_RISK_SMOKE_TEST=1`. Stages 1–38 completed, and Stage 39 stopped as documented for smoke mode because Tables 5–7 and C.10 were absent. In a second check, stand-in files were supplied for those four sweep outputs only. Stage 39 then completed, with `passed=True` and all six gates True (fixtures, coverage, readme, register, environment, bundle). Nothing was written outside `./study_run/`.
