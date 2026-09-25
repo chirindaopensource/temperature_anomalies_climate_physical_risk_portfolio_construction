@@ -1,0 +1,19 @@
+{
+  "blas_vendor": "openblas",
+  "cpu_model": "Intel64 Family 6 Model 142 Stepping 10, GenuineIntel",
+  "hardware_ratio": 1.0,
+  "library_versions": {
+    "matplotlib": "3.11.1",
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scikit-learn": "1.9.0",
+    "scipy": "1.18.0",
+    "statsmodels": "0.14.6"
+  },
+  "manifest_version": "1.0",
+  "os_build": "Windows-11-10.0.26200-SP0",
+  "python_version": "CPython 3.14.4 (numpy-abi 33554432 (numpy-dist 2.4.6), id 034368a27a1a)",
+  "ram_gb": 16.0,
+  "ram_source": "fallback",
+  "reference_runtime_seconds": 217.39
+}
