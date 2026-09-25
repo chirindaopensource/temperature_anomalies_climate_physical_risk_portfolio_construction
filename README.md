@@ -157,7 +157,7 @@ Under a Gaussian, this is the upper tail $`1 - \Phi(2)`$, about the top 2.28 % o
 The time-varying probability $`p_{k,t}`$ of an extreme event is modelled continent by continent:
 
 ```math
-\operatorname{logit}(p_{k,t}) = \ln\left( \frac{p_{k,t}}{1 - p_{k,t}} \right) = \beta_{0,k} + \beta_{1,k}t + \beta_{2,k}t^2. \tag{3}
+\mathrm{logit}(p_{k,t}) = \ln\left( \frac{p_{k,t}}{1 - p_{k,t}} \right) = \beta_{0,k} + \beta_{1,k}t + \beta_{2,k}t^2. \tag{3}
 ```
 
 $`\beta_{1,k}`$ captures the linear progression of risk, and $`\beta_{2,k}`$ whether the frequency of extremes is accelerating or decelerating. Table 1 of the paper reports the discrimination of the fit estimated on 1940–2025:
@@ -175,13 +175,13 @@ Figure 2 of the paper compares, for Europe and North America, the fit on the res
 
 ### 4. Dependence and Admissible Correlations (Equations 4–7)
 
-The dependence between continents is measured by the Pearson correlation of $`B_{i,t}`$ and $`B_{j,t}`$. The paper reports values that are all positive and lie between 0 and 0.48. Because the indicators are Bernoulli, their correlation is bounded. For random variables $`X_1, X_2`$ with distribution functions $`F_1, F_2`$ and $`U \sim \operatorname{Unif}([0, 1])`$, the Fréchet–Hoeffding theorem gives
+The dependence between continents is measured by the Pearson correlation of $`B_{i,t}`$ and $`B_{j,t}`$. The paper reports values that are all positive and lie between 0 and 0.48. Because the indicators are Bernoulli, their correlation is bounded. For random variables $`X_1, X_2`$ with distribution functions $`F_1, F_2`$ and $`U \sim \mathrm{Unif}([0, 1])`$, the Fréchet–Hoeffding theorem gives
 
 ```math
-\operatorname{corr}(F_1^{-1}(U), F_2^{-1}(1 - U)) \le \operatorname{corr}(X_1, X_2) \le \operatorname{corr}(F_1^{-1}(U), F_2^{-1}(U)). \tag{4}
+\mathrm{corr}\big(F_1^{-1}(U), F_2^{-1}(1 - U)\big) \le \mathrm{corr}(X_1, X_2) \le \mathrm{corr}\big(F_1^{-1}(U), F_2^{-1}(U)\big). \tag{4}
 ```
 
-For $`X_1 \sim \operatorname{Bern}(p_1)`$ and $`X_2 \sim \operatorname{Bern}(p_2)`$ this yields the closed forms
+For $`X_1 \sim \mathrm{Bern}(p_1)`$ and $`X_2 \sim \mathrm{Bern}(p_2)`$ this yields the closed forms
 
 ```math
 \rho_{\min} = \frac{\max(0, p_1 + p_2 - 1) - p_1 p_2}{\sqrt{p_1(1 - p_1)}\sqrt{p_2(1 - p_2)}} \tag{5}
@@ -210,13 +210,19 @@ R_{s,k,t} - R_{f,t} = \alpha_{s,k} + \beta_{MKT,s,k}(R_{MKT,t} - R_{f,t}) + \gam
 The sector panel adds month and continent fixed effects:
 
 ```math
-R_{s,k,t} - R_{f,t} = \alpha_s + \beta_{MKT,s}(R_{MKT,t} - R_{f,t}) + \gamma_s B_{k,t} + \text{FE}_{\text{month}} + \text{FE}_{\text{continent}} + \epsilon_{s,k,t}. \tag{9}
+\begin{aligned}
+R_{s,k,t} - R_{f,t} = {} & \alpha_s + \beta_{MKT,s}(R_{MKT,t} - R_{f,t}) + \gamma_s B_{k,t} \\
+& + \text{FE}_{\text{month}} + \text{FE}_{\text{continent}} + \epsilon_{s,k,t}.
+\end{aligned} \tag{9}
 ```
 
 The global panel pools all sectors and continents:
 
 ```math
-R_{s,k,t} - R_{f,t} = \alpha + \beta_{MKT}(R_{MKT,t} - R_{f,t}) + \Gamma B_{k,t} + \text{FE}_{\text{month}} + \text{FE}_{\text{continent}} + \epsilon_{s,k,t}. \tag{10}
+\begin{aligned}
+R_{s,k,t} - R_{f,t} = {} & \alpha + \beta_{MKT}(R_{MKT,t} - R_{f,t}) + \Gamma B_{k,t} \\
+& + \text{FE}_{\text{month}} + \text{FE}_{\text{continent}} + \epsilon_{s,k,t}.
+\end{aligned} \tag{10}
 ```
 
 The implementation estimates Equations (9) and (10) under one shared run identifier. `run_two_scope_panel_fe_driver` enforces this, and each scope cross-checks the other's run identifier and data fingerprint.
@@ -242,25 +248,34 @@ The paper reports the highest sector average for Real Estate (10.6) and the lowe
 CRE is the expected climate exposure of the portfolio at time $`t`$:
 
 ```math
-\text{CRE}(\boldsymbol{w}, t) = \mathbb{E}\left[\sum_{k=1}^K \alpha_k(\boldsymbol{w}) B_{k,t}\right] = \sum_{k=1}^K \alpha_k(\boldsymbol{w}) \cdot p_{k,t}. \tag{13}
+\text{CRE}(\boldsymbol{w}, t) = \mathbb{E}\left[\sum_{k=1}^K \alpha_k(\boldsymbol{w}) B_{k,t}\right] = \sum_{k=1}^K \alpha_k(\boldsymbol{w})\, p_{k,t}. \tag{13}
 ```
 
 CEV is the variance of that exposure:
 
 ```math
-\text{CEV}(\boldsymbol{w}, t) = \operatorname{Var}\left(\sum_{k=1}^K \alpha_k(\boldsymbol{w}) B_{k,t}\right) = \sum_{k=1}^K \alpha_k^2 \operatorname{Var}(B_{k,t}) + 2\sum_{k < j} \alpha_k \alpha_j \operatorname{Cov}(B_{k,t}, B_{j,t}), \tag{14}
+\begin{aligned}
+\text{CEV}(\boldsymbol{w}, t) &= \mathrm{Var}\left(\sum_{k=1}^K \alpha_k(\boldsymbol{w}) B_{k,t}\right) \\
+&= \sum_{k=1}^K \alpha_k^2\, \mathrm{Var}(B_{k,t}) + 2\sum_{k < j} \alpha_k \alpha_j\, \mathrm{Cov}(B_{k,t}, B_{j,t}),
+\end{aligned} \tag{14}
 ```
 
-with $`\operatorname{Var}(B_{k,t}) = p_{k,t}(1 - p_{k,t})`$ and
+with $`\mathrm{Var}(B_{k,t}) = p_{k,t}(1 - p_{k,t})`$ and
 
 ```math
-\operatorname{Cov}(B_{k,t}, B_{j,t}) = \rho_{k,j}\sqrt{\operatorname{Var}(B_{k,t})\operatorname{Var}(B_{j,t})} = \rho_{k,j}\sqrt{p_{k,t}(1 - p_{k,t})p_{j,t}(1 - p_{j,t})}. \tag{15}
+\begin{aligned}
+\mathrm{Cov}(B_{k,t}, B_{j,t}) &= \rho_{k,j}\sqrt{\mathrm{Var}(B_{k,t})\,\mathrm{Var}(B_{j,t})} \\
+&= \rho_{k,j}\sqrt{p_{k,t}(1 - p_{k,t})\,p_{j,t}(1 - p_{j,t})}.
+\end{aligned} \tag{15}
 ```
 
 Substituting gives the closed form that the code evaluates:
 
 ```math
-\text{CEV}(\boldsymbol{w}, t) = \sum_{k=1}^K \alpha_k^2 p_{k,t}(1 - p_{k,t}) + 2\sum_{k < j} \alpha_k \alpha_j \rho_{k,j}\sqrt{p_{k,t}(1 - p_{k,t})p_{j,t}(1 - p_{j,t})}. \tag{16}
+\begin{aligned}
+\text{CEV}(\boldsymbol{w}, t) = {} & \sum_{k=1}^K \alpha_k^2\, p_{k,t}(1 - p_{k,t}) \\
+& + 2\sum_{k < j} \alpha_k \alpha_j \rho_{k,j}\sqrt{p_{k,t}(1 - p_{k,t})\,p_{j,t}(1 - p_{j,t})}.
+\end{aligned} \tag{16}
 ```
 
 The first term is Herfindahl-like: it measures the geographic dispersion of risk and, for uniform probabilities, is smallest when $`\alpha_k = 1/K`$. The second term is systemic: correlated extremes in continents where the portfolio is heavily exposed raise its volatility. The decline of CEV after about 2010 follows from the Bernoulli variance $`p(1-p)`$, which peaks at $`p = 0.5`$. Once several $`p_{k,t}`$ exceed 0.5 and keep rising, the variance falls even though the expected frequency of extremes stays high.
@@ -276,7 +291,10 @@ With $`\alpha_k = 1/K`$, $`p_k = p`$ and $`\rho_{k,j} = \rho`$, the idiosyncrati
 but the systemic term does not:
 
 ```math
-2\sum_{k < j} \frac{1}{K^2}\rho p(1 - p) = 2 \frac{K(K - 1)}{2}\frac{1}{K^2}\rho p(1 - p) = \left(1 - \frac{1}{K}\right)\rho p(1 - p) \;\to\; \rho p(1 - p). \tag{18}
+\begin{aligned}
+2\sum_{k < j} \frac{1}{K^2}\rho p(1 - p) &= 2 \frac{K(K - 1)}{2}\frac{1}{K^2}\rho p(1 - p) \\
+&= \left(1 - \frac{1}{K}\right)\rho p(1 - p) \;\to\; \rho p(1 - p).
+\end{aligned} \tag{18}
 ```
 
 Finer geographic granularity removes local dispersion but cannot remove the risk that comes from the correlation of climate events.
@@ -375,7 +393,7 @@ Each task below names its orchestrator and its exact cell title.
 21. **Task 21, Global Pooled Panel (Equation 10)** (`orchestrate_task_21`, plus `run_two_scope_panel_fe_driver`). Estimates $`\Gamma`$, compares it with $`-0.003`$ and $`p = 0.0096`$ and attaches an associational caveat. The driver runs Tasks 20 and 21 under one `run_id`.
 22. **Task 22, Climate-Normalized Continental Weight Computation (Equation 12)** (`orchestrate_task_22`). Forms $`AI_i \cdot S_{i,k}`$ in the verified frozen order, computes $`\alpha_k(\boldsymbol w)`$, checks degree-zero homogeneity and persists the market-cap benchmark $`\alpha`$.
 23. **Task 23, CRE Computation (Equation 13)** (`orchestrate_task_23`). Evaluates CRE as a snapshot and as a full series through one matrix–vector product, and requires the two paths to agree.
-24. **Task 24, CEV Computation (Equations 14-16)** (`orchestrate_task_24`). Builds $`V = \operatorname{diag}(v)\,\rho\,\operatorname{diag}(v)`$ with $`v_k = \sqrt{p_k(1-p_k)}`$, validates $`\rho`$ and $`\alpha`$, evaluates all periods in one contraction and enforces $`0 \le \text{CEV} \le 0.25`$.
+24. **Task 24, CEV Computation (Equations 14-16)** (`orchestrate_task_24`). Builds $`V = \mathrm{diag}(v)\,\rho\,\mathrm{diag}(v)`$ with $`v_k = \sqrt{p_k(1-p_k)}`$, validates $`\rho`$ and $`\alpha`$, evaluates all periods in one contraction and enforces $`0 \le \text{CEV} \le 0.25`$.
 25. **Task 25, Asymptotic Analysis (Equations 17-18)** (`orchestrate_task_25`). Verifies both closed forms at $`K = 6`$ and $`K = 10{,}000`$ against direct enumeration and the Task 24 engine.
 26. **Task 26, CEV Strategy Comparison (Figure 5)** (`orchestrate_task_26`). Compares the cap-weighted benchmark with the equal and inverse-risk continental allocations and checks their CEV ordering (Figure 5).
 27. **Task 27, CEV Correlation Stress Testing (Figure 6)** (`orchestrate_task_27`). Recomputes the benchmark CEV under the empirical, minimum-bound and maximum-bound correlation matrices. The ordering is proved on the raw matrices; magnitudes are reported after PSD projection (Figure 6).
@@ -2704,7 +2722,12 @@ A["task_29"] = run_stage(29, {"s_tau": A["task_28"]["S_tau"],
 
 The program solved is:
 
-$$\min_{\boldsymbol w}\ \big(-\boldsymbol w^\top \boldsymbol r_\tau,\ \boldsymbol w^\top \Sigma_\tau \boldsymbol w,\ \text{CEV}_\tau(\boldsymbol w)\big)\quad \text{s.t.}\quad \boldsymbol 1^\top \boldsymbol w = 1,\ \boldsymbol w \ge 0.$$
+```math
+\begin{aligned}
+\min_{\boldsymbol w}\quad & \big(-\boldsymbol w^\top \boldsymbol r_\tau,\ \boldsymbol w^\top \Sigma_\tau \boldsymbol w,\ \text{CEV}_\tau(\boldsymbol w)\big) \\
+\text{s.t.}\quad & \boldsymbol 1^\top \boldsymbol w = 1,\ \boldsymbol w \ge 0.
+\end{aligned}
+```
 
 Passing Task 1's `manifest_path` lets Stage 31 fill in the measured hardware ratio $h$.
 
