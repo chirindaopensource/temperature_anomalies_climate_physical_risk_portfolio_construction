@@ -1,0 +1,180 @@
+# ==========================================================================#
+#
+#  Temperature Anomalies and Climate Physical Risk in Portfolio Construction
+#
+#  A dynamic, modular physical climate risk engine converting raw climate
+#  observations into time-varying extreme-event probabilities and
+#  cross-regional dependence structures, aggregating them into firm and
+#  portfolio exposure/volatility metrics weighted by tangible-asset
+#  intensity and continental revenue shares, embedded as a third objective
+#  alongside expected return and market variance in a multi-objective
+#  optimisation producing a Pareto frontier.
+#
+#  Core Methodological Components:
+#  * Standardized temperature anomalies via rolling climatology and 2-sigma
+#    thresholding (Eq. (1)-(2))
+#  * Logistic regression of extreme-event probability with a quadratic
+#    time trend (Eq. (3))
+#  * Frechet-Hoeffding Bernoulli comonotone/countermonotone bounds on
+#    joint exceedance probability (Eq. (5)-(6))
+#  * Climate-augmented CAPM and two-way fixed-effects panel regression of
+#    sector-continent returns on temperature anomalies (Eq. (8)-(10))
+#  * Asset-intensity-weighted Climate Risk Exposure and Climate Exposure
+#    Volatility construction (Eq. (11), (12), (16))
+#  * MOPSO multi-objective particle swarm optimisation over return,
+#    variance, and climate exposure objectives, with backtest (Eq. (19a)-
+#    (19c))
+#
+#  Technical Implementation Features:
+#  * Newey-West HAC-robust standard errors for panel/time-series estimates
+#  * Ledoit-Wolf shrinkage estimation of the covariance matrix
+#  * Duchi et al. Euclidean projection onto the probability simplex
+#  * Hypervolume indicator and spacing metric for Pareto-front quality
+#  * AUROC / AUPR classification-quality diagnostics for the logistic fit
+#  * Reproducibility manifests (hashes, seeds, environment probes) for
+#    every pipeline stage
+#
+#  Paper Reference:
+#  Azzone, M., Bechi, C., & Sbaiz, G. (2026). Temperature Anomalies and
+#  Climate Physical Risk in Portfolio Construction. arXiv preprint
+#  arXiv:2604.11143. https://arxiv.org/abs/2604.11143
+#
+#  Author: CS Chirinda
+#  License: MIT
+#  Version: 1.0.0
+#
+# ==========================================================================#
+#
+#  Installation:
+#      python -m pip install -r requirements.txt
+#
+#  Interpreter:
+#  * Python >= 3.13 (notebook kernel metadata: 3.13.9; end-to-end
+#    verification: CPython 3.14.4, Windows 11, OpenBLAS).
+#  * Pinned-wheel floors (Requires-Python): scipy 1.18.0 >= 3.12;
+#    numpy 2.4.6, pandas 3.0.3, scikit-learn 1.9.0, matplotlib 3.11.1
+#    >= 3.11. The project itself is verified only on 3.13 and 3.14.
+#
+#  Platform:
+#  * The import cell contains an unguarded `import winreg` (standard
+#    library, Windows only). As shipped, the notebook therefore runs on
+#    Windows only; wrap that import in a guard on Linux or macOS.
+#
+#  Pinning policy:
+#  * Exact pins (==) reproduce the verified environment recorded by the
+#    Task 39 reproducibility bundle (environment.json).
+#  * Optional packages that were absent from that environment carry a
+#    compatible-release floor (>=) instead of an unverified exact pin.
+#
+#  Standard-library modules (no installation required):
+#  ast, collections, contextlib, copy, ctypes, datetime, functools,
+#  hashlib, importlib, importlib.metadata, importlib.util, inspect, io,
+#  itertools, json, logging, math, numbers, os, pathlib, platform, re,
+#  shutil, subprocess, sys, tarfile, tempfile, time, tokenize, typing,
+#  unicodedata, unittest.mock, uuid, warnings, winreg (Windows only).
+#
+# ==========================================================================#
+
+# ==========================================================================#
+# Core numerical stack
+# ==========================================================================#
+
+# numpy: arrays and linear algebra (Cholesky, eigen, condition numbers);
+# numpy.polynomial.polynomial.polyvander (Eq. (3) quadratic trend design);
+# numpy.random.Generator (seeded MOPSO runs and synthetic draws).
+numpy==2.4.6
+
+# pandas: temperature, return, fundamentals and segment panels; manifests.
+pandas==3.0.3
+
+# scipy: scipy.linalg.qr (rank checks), scipy.spatial.distance.cdist
+# (spacing metric, grid distances), scipy.stats.norm / t / spearmanr
+# (2-sigma tail probability, HAC inference, rank diagnostics).
+scipy==1.18.0
+
+# ==========================================================================#
+# Econometrics and statistical learning
+# ==========================================================================#
+
+# statsmodels: statsmodels.api (Logit for Eq. (3); OLS with Newey-West HAC
+# covariance via get_robustcov_results for Eq. (8)-(10));
+# regression.linear_model.OLS;
+# tools.sm_exceptions.PerfectSeparationError (logistic-fit guard).
+statsmodels==0.14.6
+
+# scikit-learn (imported as sklearn): sklearn.metrics.roc_auc_score and
+# average_precision_score for the AUROC / AUPR diagnostics of Table 1.
+scikit-learn==1.9.0
+
+# threadpoolctl: BLAS thread-pool control and probing for bit-reproducible
+# linear algebra and the environment manifest.
+threadpoolctl==3.6.0
+
+# ==========================================================================#
+# Storage and packaging utilities
+# ==========================================================================#
+
+# pyarrow: pyarrow and pyarrow.parquet for Parquet persistence of every
+# stage deliverable in the reproducibility bundle.
+pyarrow==25.0.0
+
+# packaging: packaging.requirements.Requirement / InvalidRequirement for
+# the Task 1 library checklist (version-specifier comparison).
+packaging==26.2
+
+# ==========================================================================#
+# Visualisation
+# ==========================================================================#
+
+# matplotlib: matplotlib, matplotlib.pyplot, matplotlib.axes,
+# matplotlib.image, matplotlib.ticker and mpl_toolkits.mplot3d.Axes3D
+# (three-objective Pareto-frontier plots); mpl_toolkits ships with it.
+# matplotlib.image (as mpimg) and Axes3D are imported but not otherwise
+# referenced; the imports alone require this package.
+matplotlib==3.11.1
+
+# pillow (imported as PIL): `from PIL import Image` in the import cell.
+# The name is not otherwise referenced, but the import fails without the
+# package; pillow is also a hard dependency of matplotlib.
+pillow==12.2.0
+
+# ==========================================================================#
+# Optional guarded imports (the code falls back when these are absent)
+# ==========================================================================#
+
+# psutil: bound by the guarded import only. The hardware probes use
+# winreg / ctypes (Windows) and /proc (Linux) instead, so nothing breaks
+# without it. Absent from the verified environment, hence a floor, not a pin.
+psutil>=7.0.0
+
+# pycountry: pycountry.currencies for ISO 4217 currency validation;
+# validators fall back to a hardcoded ISO set without it.
+pycountry>=24.6.1
+
+# ==========================================================================#
+# Usage example only (synthetic data generation and config.yaml loading)
+# ==========================================================================#
+
+# faker: synthetic firm identities in the usage example.
+Faker==40.37.0
+
+# pyyaml (imported as yaml): loads config.yaml in the usage example.
+PyYAML==6.0.3
+
+# ==========================================================================#
+# Verified transitive dependencies (recorded, not pinned; installed
+# automatically by the packages above)
+# ==========================================================================#
+#
+# contourpy==1.3.3, cycler==0.12.1, fonttools==4.63.0, kiwisolver==1.5.0,
+# pyparsing==3.3.2 (matplotlib); python-dateutil==2.9.0.post0,
+# tzdata==2026.2 (pandas); joblib==1.5.3 (scikit-learn); patsy==1.0.2
+# (statsmodels); narwhals==2.24.0; six==1.17.0.
+#
+# ==========================================================================#
+# Notebook front end (not imported by the code; install separately)
+# ==========================================================================#
+#
+#     python -m pip install jupyter
+#
+# ==========================================================================#
