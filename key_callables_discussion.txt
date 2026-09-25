@@ -1,0 +1,504 @@
+## Key callables, Tasks 1 to 40
+
+Below is an abbreviated discussion of the Inputs, Processes and Outputs (IPOs) of the key callables in the "*Temperature Anomalies and Climate Physical Risk in Portfolio Construction*" research pipeline:
+
+
+### Task 1 — `orchestrate_task_1`
+
+- **Inputs**: `t_observed_seconds: Optional[float] = None`, `manifest_path: str | Path`, `seed_log_path: str | Path`, `run_manifest_path: str | Path`, `config: Optional[Dict[str, Any]] = None`, keyword-only `output_dir: Optional[Path] = None`.
+- **Process**: validates the 21-key `STUDY_CONFIG` (`build_default_study_config`, `validate_study_config`, `scan_unspecified_fields`) and the seed protocol (seeds exactly $\lbrace 1, \dots, 10 \rbrace$, estimator seed 42, PCG64) before any write; builds the pristine generator registry; builds and atomically writes the environment manifest and seed-state log.
+- **Outputs**: `Dict[str, Any]` with `manifest`, `hardware_ratio`, `seeds`, `estimator_seed`, `config`, `config_checksum`, `validation_report`, `unspecified_fields`, `seed_registry`, the log paths and `library_checklist`.
+- **Transformation**: configuration and seed integers become a validated, checksummed configuration plus one PCG64 generator state per MOPSO run, persisted before any random draw.
+- **Research role**: reproducibility scaffolding for the stochastic optimiser; the manuscript averages "10 independent runs of the optimization process" and reports that "the time execution is 217.39 seconds per month".
+- **Equations**: none from the manuscript. The code defines a hardware ratio $h = 217.39 / T_{observed}$; this is a code construct, not an equation of the paper.
+- **Code/paper note**: when `t_observed_seconds` is None, `hardware_ratio` is recorded as null with status `pending_anchor_measurement` rather than a fabricated value; the manuscript specifies no such ratio.
+- **Scope**: Table C.10 hyperparameters ($N_{pop} = 500$, $\operatorname{Iter} = 300$, $N_{rep} = 400$, $N_{grid} = 10$, $\alpha = 0.1$, $\beta = \gamma = 1$, $\mu = 2$, $\omega = 0.8$, $c_1 = c_2 = 1.5$) are pinned inside the default configuration.
+
+### Task 2 — `orchestrate_task_2`
+
+- **Inputs**: `df_temperature: pd.DataFrame`, `df_returns: pd.DataFrame`, `df_market: pd.DataFrame`, `df_riskfree: pd.DataFrame`, `aux_tables: Dict[str, pd.DataFrame]` (eight auxiliary tables), `log_dir: Optional[Path] = None`, keyword-only `allow_fatal: bool = True`.
+- **Process**: runs three validators in fixed order: `validate_temperature_panel` (six invariants), `validate_firm_returns_panels` (keys, 2004-01 to 2025-04 coverage, positive market cap, return band, currency codes) and `validate_fundamentals_panels` (primary keys, membership snapshots 2020-01-01 and 2025-01-01, trading calendar, segment tables); each writes a JSON-lines audit log.
+- **Outputs**: `Dict[str, Any]` with the indexed panels, the three validation reports and `overall_passed`.
+- **Transformation**: raw heterogeneous tables become typed, MultiIndexed panels plus structured INFO/WARNING/FATAL records; data values are not modified.
+- **Research role**: data-provenance gate for the inputs described in Section 2, where the study uses "monthly mean temperature data for the period spanning from January 1, 1940, to April 30, 2025" and return data over 2004 to 2025.
+- **Equations**: none; this stage precedes Equation (1).
+- **Code/paper note**: with `allow_fatal=True` (default) FATAL records are aggregated, not raised; `allow_fatal=False` raises after all three stages have logged. A `RuntimeError` is raised if the overall verdict disagrees with the stage verdicts.
+- **Scope**: validation only; cleansing is deferred to Task 3.
+
+### Task 3 — `orchestrate_task_3`
+
+- **Inputs**: `df_temperature`, `df_returns`, `universe`, `metadata`, `fundamentals`, `segment_revenue`, `fx_rates` (all `pd.DataFrame`), `log_dir: Optional[Path] = None`, `reviewed_outlier_keys: Optional[set] = None`, keyword-only `allow_fatal: bool = False`.
+- **Process**: `cleanse_temperature_panel` drops missing or non-canonical rows with reason codes and re-checks baseline cell counts; `cleanse_firm_returns_panel` drops non-positive caps, winsorises `total_return_usd` at the full-sample 1st and 99th percentiles, and deduplicates revisions; `reconcile_cross_tables` enforces foreign-key, FX and revenue closures.
+- **Outputs**: `Dict[str, Any]` with `temperature_clean`, `returns_clean`, `reconciliation`, `closure_records`, `ledgers`, `overall_passed` (plus `fatal_closures` when `allow_fatal=True`).
+- **Transformation**: validated panels become cleansed panels whose row ledgers satisfy rows in minus rows dropped equals rows retained, verified numerically.
+- **Research role**: implements the data-engineering requirement of "Robust handling of gaps or outliers in temperature and return series" for the total-return series the paper uses ("We utilize total returns").
+- **Equations**: none.
+- **Code/paper note**: the 1st/99th percentile winsorisation and the FX closure rules are code-level policies; the manuscript does not describe winsorisation.
+- **Failure mode**: by default any FATAL cross-table closure (for example a missing FX rate) raises `ValueError` after artifacts are confirmed on disk.
+
+### Task 4 — `orchestrate_task_4`
+
+- **Inputs**: `df_clean: pd.DataFrame` (cleansed temperature panel), `out_dir: Optional[Path] = None`, `log_dir: Optional[Path] = None`.
+- **Process**: `filter_baseline_window` keeps 1960-01 to 1990-12; `compute_baseline_moments` aggregates $\mu_{k,m}$ and $\sigma_{k,m}$ per continent and calendar month; `validate_baseline_moments` checks positivity, finiteness and the exact $6 \times 12$ key set; `save_baseline_moments` persists with an explicit schema; a replay proof checks 72 cells in the persisted log.
+- **Outputs**: `Dict[str, Any]` with `baseline`, `moments` (72 rows: `mu`, `sigma`, `sigma_ddof0`, `n`), `validation`, artifact paths and `overall_passed`.
+- **Transformation**: a monthly temperature series per continent becomes 72 seasonal reference moments.
+- **Research role**: supplies the moments of Equation (1); the paper states "we establish a reference period (baseline) spanning from 1960 to 1990" and computes moments "using only the observations within this 30-year window".
+- **Equations**: the moments are the $\mu_{k,m}$ and $\sigma_{k,m}$ of Equation (1), shown under Task 5.
+- **Code/paper note**: inclusive endpoints give 31 years (31 observations per cell), not 30; this is recorded as judgment call JC-baseline. `sigma` uses the sample divisor (ddof = 1); the ddof = 0 value is kept as a diagnostic because the manuscript does not specify the divisor.
+- **Failure mode**: any NaN inside the baseline window or any cell count other than 31 is FATAL.
+
+### Task 5 — `orchestrate_task_5`
+
+- **Inputs**: `df_clean: pd.DataFrame`, `moments: pd.DataFrame` (the 72-row Task 4 output), `out_dir: Optional[Path] = None`.
+- **Process**: `join_baseline_moments` joins many-to-one on (continent, calendar month) with a month-drift guard; `compute_standardized_anomaly` evaluates Z in vectorised form; `validate_anomaly_panel` checks for NaNs, the 72 diagnostic cells and baseline-window moments of Z; `save_anomaly_panel` persists with a checksum.
+- **Outputs**: `Dict[str, Any]` with `joined`, `panel` (Z indexed by continent and `year_month`), `diagnostics`, paths and `overall_passed` (validation, artifacts on disk, unchanged row count).
+- **Transformation**: raw temperature $T_{k,t}$ becomes a unit-free standardised anomaly that is comparable across continents and months.
+- **Research role**: implements Equation (1): the raw temperature "is transformed into a standardized anomaly".
+
+$$
+Z_{k,t} = \frac{T_{k,t} - \mu_{k,m}}{\sigma_{k,m}}
+$$
+
+- **Code/paper note**: faithful to Equation (1), with $m$ the calendar month of $t$ and $\sigma_{k,m}$ the ddof = 1 baseline deviation from Task 4.
+
+### Task 6 — `orchestrate_task_6`
+
+- **Inputs**: `panel: pd.DataFrame` (anomaly panel with Z), `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None` (threshold and operator source).
+- **Process**: `build_bernoulli_indicator` applies a strict comparison, with a boundary self-check at the threshold and its adjacent floats; `compute_prevalence_windows` computes prevalence over the full, restricted and averaging windows against the Gaussian reference; `persist_bernoulli_panel` writes the panel, the prevalence table and a configuration snapshot after a row-count proof.
+- **Outputs**: `Dict[str, Any]` with the int8 Bernoulli panel (MultiIndex continent and `year_month`), the 18-row prevalence frame and paths.
+- **Transformation**: a continuous anomaly becomes a binary extreme-event indicator.
+- **Research role**: implements Equation (2): "An extreme event is recorded when the standardized temperature exceeds a critical threshold of 2".
+
+$$
+B_{k,t} = 1 \ \text{if } Z_{k,t} > 2, \qquad B_{k,t} = 0 \ \text{otherwise}
+$$
+
+- **Code/paper note**: faithful, including strict inequality; the prevalence comparison uses the 2.28% Gaussian upper-tail reference stated in the text.
+
+### Task 7 — `orchestrate_task_7`
+
+- **Inputs**: `bernoulli: pd.DataFrame` (continent, `year_month`, B), `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `fit_all_continents` fits one logit per continent by Newton iterations over 1940-01 to 2025-04 in an orthogonalised time basis, then back-transforms to monomial $\beta_0, \beta_1, \beta_2$; `predict_probability_panel` projects the fitted probabilities onto the shared monthly grid with a stable sigmoid; `persist_logit_artifacts` writes coefficients, probabilities and the time-origin metadata.
+- **Outputs**: `Dict[str, Any]` with the six-row coefficient table (with standard errors and diagnostics), the $6 \times T$ probability panel `p_hat`, and paths.
+- **Transformation**: binary event histories become smooth, time-varying event probabilities $\hat{p}_{k,t}$.
+- **Research role**: implements Equation (3); "the model incorporates a quadratic time trend" to capture accelerating risk.
+
+$$
+\operatorname{logit}(p_{k,t}) = \ln\left( \frac{p_{k,t}}{1 - p_{k,t}} \right) = \beta_{0,k} + \beta_{1,k}t + \beta_{2,k}t^2
+$$
+
+- **Code/paper note**: the orthogonal basis is an exact reparameterisation, so the fitted probabilities are those of Equation (3). The time index ($t$ = months since 1940-01 plus one) is a code convention; the manuscript does not define it. Non-convergence is FATAL.
+
+### Task 8 — `orchestrate_task_8`
+
+- **Inputs**: `bernoulli: pd.DataFrame`, `probability: pd.DataFrame` (continent, `year_month`, `p_hat`), `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `compute_auroc_per_continent` computes the Mann-Whitney AUROC (ties count one half) with a seeded moving-block bootstrap interval and compares it to Table 1 within 0.02; `compute_aupr_per_continent` computes step-interpolated AUPR and the prevalence baseline; `build_table1_and_figure1` writes Table 1, a deviation log and Figure 1 (1940 to 2020).
+- **Outputs**: `Dict[str, Any]` with the AUROC and AUPR tables, Table 1, paths and `overall_passed` (AUROC within tolerance, AUPR above baseline, artifacts present).
+- **Transformation**: pairs $(B_{k,t}, \hat{p}_{k,t})$ become per-continent discrimination scores.
+- **Research role**: reproduces Table 1: "all continents exhibit exceptionally high AUROC values, ranging from 0.8380 for Europe to 0.9396 for Africa", with the AUPR random baseline taken as "the positive-class prevalence".
+- **Equations**: none numbered; the metrics are standard.
+- **Code/paper note**: the block-bootstrap intervals are an addition; the manuscript reports point values only. AUPR is computed by step interpolation (average precision); the manuscript does not state its interpolation rule.
+- **Scope**: the evaluation uses the full-sample fit (1940 to 2025), consistent with the text's training period for Table 1.
+
+### Task 9 — `orchestrate_task_9`
+
+- **Inputs**: `bernoulli: pd.DataFrame`, `restricted_end: Optional[str] = None` (default 2019-12-31), `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `resolve_restricted_end` resolves the end date once; `fit_full_and_restricted` fits Equation (3) on 1940-01 to 2025-04 and on 1940-01 to the restricted end, reusing Task 7's stabilised fitter, and projects both onto the full grid; `compute_overlap_divergences` computes the maximum and RMS divergence over the overlap; `validate_return_schema` checks the three-key schema.
+- **Outputs**: `Dict[str, Any]` with keys `full_fit`, `restricted_fit` and `comparison_metrics`, each keyed by continent; an optional sidecar JSON with the grid and curves.
+- **Transformation**: one Bernoulli panel becomes two coefficient sets and two probability curves per continent, plus divergence scalars $\max_t \lvert p_{full}(t) - p_{rest}(t) \rvert$ and the RMS equivalent.
+- **Research role**: out-of-sample stability check; "The fitted curve from the restricted training set closely tracks the curve estimated on the full sample."
+- **Equations**: Equation (3), applied on two windows (see Task 7).
+- **Code/paper note**: the divergence metrics are code-level quantifications of a visual claim; the manuscript gives no numerical criterion. The text names the restricted sample 1940-2019, matching the default end date.
+- **Scope**: `out_dir=None` performs no filesystem writes.
+
+### Task 10 — `orchestrate_task_10`
+
+- **Inputs**: `bernoulli: pd.DataFrame`, `restricted_end: Optional[str] = None`, `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `invoke_and_validate_orchestrator` calls `orchestrate_task_9`, checks coverage and writes a run-versioned JSON snapshot with a SHA-256; `summarize_divergences` audits each continent against a 0.05 maximum-deviation threshold (WARNING only) and persists the per-month divergence series; `render_figure2` draws the full versus restricted curves for Europe and North America.
+- **Outputs**: `Dict[str, Any]` with the Task 9 triple, the divergence summary and figure paths.
+- **Transformation**: the two-window fit becomes an audited divergence table and Figure 2.
+- **Research role**: delivers Figure 2, "comparing forecasts derived from logistic regressions estimated over two distinct sample periods".
+- **Equations**: none beyond Equation (3), inherited from Task 9.
+- **Code/paper note**: the 0.05 threshold is a documented judgment call (JC-divergence-warn-threshold) and is not stated in the manuscript. It never aborts the run.
+- **Scope**: the restricted end is read back from Task 9's result rather than re-resolved, which prevents two resolution paths from drifting.
+
+### Task 11 — `orchestrate_task_11`
+
+- **Inputs**: `bernoulli: pd.DataFrame`, `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `pivot_bernoulli_wide` reshapes to a 972-month by 6-continent frame over 1940-01 to 2020-12 without listwise deletion; `persist_pivot` writes it; `compute_empirical_correlation` computes the pairwise-complete $6 \times 6$ Pearson (phi) matrix with symmetry and unit-diagonal proofs; `render_correlation_heatmap` draws Figure 3 on a fixed $[0, 0.5]$ colour range.
+- **Outputs**: `Dict[str, Any]` with the wide pivot, the correlation matrix and figure paths.
+- **Transformation**: six binary series become the empirical dependence matrix $\hat{\rho}_{k,j}$ used by Tasks 13, 24, 27 and 31.
+- **Research role**: Section 2.2: "all estimated Pearson coefficients are positive", "with values ranging between 0 and 0.48".
+- **Equations**: none numbered; Pearson correlation of $B_{i,t}$ and $B_{j,t}$.
+- **Code/paper note**: the 1940 to 2020 estimation window is a code choice aligned with the averaging window of Task 12; the manuscript does not state the window for Figure 3.
+- **Scope**: negative cells, if any, clip visually at the bottom of the fixed colour range but are annotated with their signed values.
+
+### Task 12 — `orchestrate_task_12`
+
+- **Inputs**: `probability: pd.DataFrame` (full `p_hat` panel), `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None` (averaging-window label).
+- **Process**: `filter_averaging_window` keeps 1940-01 to 2020-12 (972 months, 5,832 rows); `compute_time_averaged_marginals` takes the equal-weighted mean per continent; `validate_marginals` enforces six continents and $0 < \bar{p}_k < 1$, flagging values near the boundary.
+- **Outputs**: `Dict[str, Any]` with the filtered panel, the six-row marginals frame (`p_bar`, `n_obs`, `near_boundary`) and paths.
+- **Transformation**: a time-varying probability panel becomes one representative marginal per continent.
+- **Research role**: resolves the non-stationarity of the bounds; the authors "decide to use the mean value of the estimated parameters" over 1940 to 2020.
+
+$$
+\bar{p}_k = \frac{1}{T}\sum_{t=1}^T \hat{p}_{k,t}
+$$
+
+- **Code/paper note**: faithful, with $T = 972$. The formula carries no printed number in the paper, so none is cited. A configured window label other than 1940-2020 is FATAL rather than silently ignored.
+
+### Task 13 — `orchestrate_task_13`
+
+- **Inputs**: `marginals: pd.DataFrame` (continent, `p_bar`), `empirical: pd.DataFrame` ($6 \times 6$ Pearson matrix), `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `compute_rho_min_matrix` and `compute_rho_max_matrix` evaluate the closed forms with vectorised outer operations and verify the corollary's extremal cases on fixtures; `verify_admissibility_and_plot` checks $\rho_{\min} \le \hat{\rho} \le \rho_{\max}$ for all 15 pairs (tolerance 1e-6, FATAL on breach) and draws Figure 4.
+- **Outputs**: `Dict[str, Any]` with both bound matrices, the denominator-instability `flags`, the admissibility audit and figure paths.
+- **Transformation**: marginals become pairwise admissible correlation intervals, against which the empirical matrix is tested.
+- **Research role**: Equations (5) and (6); "This visualization confirms that the empirical estimates fall strictly within the feasible theoretical range."
+
+$$
+\rho_{\min} = \frac{\max(0, p_1 + p_2 - 1) - p_1 p_2}{\sqrt{p_1(1 - p_1)}\sqrt{p_2(1 - p_2)}}
+$$
+
+$$
+\rho_{\max} = \frac{\min(p_1, p_2) - p_1 p_2}{\sqrt{p_1(1 - p_1)}\sqrt{p_2(1 - p_2)}}
+$$
+
+- **Code/paper note**: faithful to (5) and (6), with $p_1, p_2$ set to $\bar{p}_k$. Strict interiority is logged but not FATAL; the caption states that pairwise bounds are necessary but not sufficient for six variables (Huber and Marić).
+
+### Task 14 — `orchestrate_task_14`
+
+- **Inputs**: `df_membership: pd.DataFrame`, `df_returns: pd.DataFrame`, `df_metadata: pd.DataFrame`, `out_path: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None` (anchors, grid dates, path overrides).
+- **Process**: `filter_dual_constituent_candidates` keeps MSCI World members at 2020-01-01 and 2025-01-01 and excludes firms with two or more consecutive missing returns over 2004-01 to 2025-04; `select_stratified_universe` ranks firms by the last market cap strictly before the anchor within each headquarters region and fills the Table 4 quotas; `persist_frozen_universe` writes the 120 firms, the sorted canonical order and its SHA-256.
+- **Outputs**: `Dict[str, Any]` with the candidate list, the 120-row universe, paths and a precedence report.
+- **Transformation**: a membership history becomes a frozen, ordered 120-firm investment universe (54 North America, 30 Europe, 30 Asia, 6 Oceania).
+- **Research role**: survivorship control ("constituents of the MSCI World index at the beginning of 2020 and 2025") and Table 4, where "the selection follows a stratified sampling approach based on market capitalization and location of the headquarter".
+- **Equations**: none.
+- **Code/paper note**: the gap rule and the top-market-cap-within-region rule are code interpretations; the manuscript gives no gap rule and does not state the within-region selection rule beyond market capitalisation.
+- **Scope**: the frozen order is the alignment key for Tasks 16, 22 and 31.
+
+### Task 15 — `orchestrate_task_15`
+
+- **Inputs**: `df_fundamentals: pd.DataFrame`, `universe_ids: List[str]` (frozen 120 firms), `df_metadata: pd.DataFrame`, `out_path: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `select_point_in_time_fundamentals` selects one eligible row per firm with effective date before 2020-01-01, handling restatements strictly; `compute_asset_intensity` divides tangible assets by revenue with positivity guards; `validate_sector_intensity_benchmarks` compares sector means with the text's values (Real Estate 10.6, Retailers 0.6).
+- **Outputs**: `Dict[str, Any]` with the selected rows, the AI frame indexed by `firm_id`, the benchmark report and paths.
+- **Transformation**: balance-sheet and income-statement levels become a dimensionless physical-vulnerability ratio per firm.
+- **Research role**: Equation (11); the ratio "reflects the degree of a company's dependency on physical assets to generate revenue".
+
+$$
+AI_i = \frac{\text{Tangible Assets}_i}{\text{Revenue}_i}
+$$
+
+- **Code/paper note**: faithful to (11). The point-in-time cut-off at the 2020-01-01 anchor is a look-ahead control; the manuscript does not state the fundamentals date.
+
+### Task 16 — `orchestrate_task_16`
+
+- **Inputs**: `df_segment_revenue: pd.DataFrame`, `df_map: pd.DataFrame` (segment-to-continent map), `df_fundamentals: pd.DataFrame` (one row per firm), `out_path: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`, keyword-only `audit_path`, `frozen_order`, `frozen_universe_path`, `expected_order_hash`.
+- **Process**: `normalize_and_explode_mapping` normalises labels, explodes multi-continent labels and requires allocation weights to sum to one per label; `aggregate_mapped_continent_revenue` sums segment revenue times allocation weight per firm-year-continent with revenue conservation; `compute_revenue_shares` records the residual against total revenue and normalises to shares.
+- **Outputs**: `Dict[str, Any]` with the normalised and mapped frames, long-form and wide-form $S_{i,k}$ (reindexed to the frozen order) and paths.
+- **Transformation**: disclosed geographic segment revenues become continental revenue shares with $\sum_k S_{i,k} = 1$ per firm.
+- **Research role**: supplies $S_{i,k}$, "the revenue produced in continent" $k$ by firm $i$, normalised "so that each firm's shares sum to one", for Equation (12).
+- **Equations**: $S_{i,k}$ enters Equation (12), shown under Task 22.
+- **Code/paper note**: the proportional residual distribution is inert for the shares, because it rescales every mapped revenue by the same factor; it is kept only for audit. The manuscript defines $S_{i,k}$ as revenue but uses it as a share; the code implements the normalised share.
+- **Failure mode**: a firm in the frozen order that is missing from the output is FATAL.
+
+### Task 17 — `orchestrate_task_17`
+
+- **Inputs**: `df_returns: pd.DataFrame`, `df_metadata: pd.DataFrame`, `df_mkt: pd.DataFrame`, `df_rf: pd.DataFrame`, `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None` (financial-exclusion list).
+- **Process**: `aggregate_sector_returns` forms same-month cap-weighted sector returns $R_{s,t}$, with weights renormalised after exclusions and financial sectors removed; `explode_sector_continent_panel` replicates each sector-month row across the six continents; `construct_excess_returns` converts the risk-free rate to a monthly holding-period basis and subtracts it from sector and market returns.
+- **Outputs**: `Dict[str, Any]` with the sector, exploded and excess-return frames, the risk-free conversion audit and paths.
+- **Transformation**: firm total returns become the dependent variable $R_{s,k,t} - R_{f,t}$ and the regressor $R_{MKT,t} - R_{f,t}$ of Equations (8) to (10).
+- **Research role**: the sector return is "calculated as the market capitalization weighted average of the individual total returns of its constituent firms", and "we exclude sectors regarding banks, financial and insurance companies".
+- **Equations**: supplies the left-hand side and market term of Equation (8), shown under Task 18.
+- **Code/paper note**: $R_{s,k,t}$ is identical across $k$ by construction (intentional replication), so the continent index enters only through $B_{k,t}$. Same-month cap weights carry a mild look-ahead, which is documented (JC-sector-return-weight-timing); the manuscript does not specify weight timing.
+- **Scope**: the row-count invariant is the number of sector rows times six, which admits unbalanced sector panels.
+
+### Task 18 — `orchestrate_task_18`
+
+- **Inputs**: `df_sector_excess: pd.DataFrame`, `df_mkt_excess: pd.DataFrame`, `df_bernoulli: pd.DataFrame`, `out_path: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `estimate_sector_continent_ols` fits one OLS per (sector, continent) cell over 2004-01 to 2025-04 and logs the factor-indicator VIF; `compute_hac_gamma_table` derives Newey-West HAC errors (Bartlett kernel) from the same fit, with lag $L = \lfloor 4(T/100)^{2/9} \rfloor$ and Student-t p-values on $T - 3$ degrees of freedom; `build_table_2` keeps $p < 0.10$, adds stars and compares with the manuscript's reference cells.
+- **Outputs**: `Dict[str, Any]` with the fits, the full gamma table, Table 2 and paths.
+- **Transformation**: excess-return and event panels become cell-level climate sensitivities $\gamma_{s,k}$ with robust inference.
+- **Research role**: Equation (8), estimated with "HAC (Heteroskedasticity and Autocorrelation Consistent) robust standard errors"; the text reports that "17 out of 23 sectors exhibit returns that are significantly impacted".
+
+$$
+R_{s,k,t} - R_{f,t} = \alpha_{s,k} + \beta_{MKT,s,k}(R_{MKT,t} - R_{f,t}) + \gamma_{s,k}B_{k,t} + \epsilon_{s,k,t}
+$$
+
+- **Code/paper note**: faithful to (8). The lag rule $\lfloor 4(T/100)^{2/9} \rfloor$ is the one recorded in the study configuration (`HAC_lag_rule` in config.yaml); the manuscript body does not state it. The small-sample correction is off, and the Student-t versus normal convention is a code choice.
+
+### Task 19 — `orchestrate_task_19`
+
+- **Inputs**: `df_sector_excess`, `df_mkt_excess`, `df_bernoulli` (all `pd.DataFrame`), `pooling_scope: str = 'sector_level'` (or `'global'`), `out_dir: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`, keyword-only `allow_single_scope: bool = False`, `run_id: Optional[str] = None`.
+- **Process**: `validate_panel_fe_scope`; `build_panel_fe_long_panel` (window 2004-01 to 2025-04); `estimate_panel_fe` fits intercept, market, B, 11 month dummies and 5 continent dummies (rank 19 asserted); a SHA-256 fingerprint and `run_id` are written to a sidecar and cross-checked against the counterpart scope's sidecar.
+- **Outputs**: `Dict[str, Any]` with `coefficients`, `std_errors`, `p_values` and `diagnostics`, keyed by sector or by `global`.
+- **Transformation**: the long panel becomes fixed-effects climate coefficients with dependence-robust inference.
+- **Research role**: shared estimator for Equations (9) and (10), adding fixed effects "to absorb systematic variations independent of temperature extremes".
+
+$$
+R_{s,k,t} - R_{f,t} = \alpha_s + \beta_{MKT,s}(R_{MKT,t} - R_{f,t}) + \gamma_s B_{k,t} + \text{FE}_{\text{month}} + \text{FE}_{\text{continent}} + \epsilon_{s,k,t}
+$$
+
+- **Code/paper note**: the manuscript names Newey-West HAC errors; the code's headline errors are Driscoll-Kraay (month-summed scores, Bartlett lag from the number of months, $t$ on $T_{months} - 1$ degrees of freedom). Stacked-row Newey-West is kept only as a sensitivity diagnostic. This is a deliberate inferential deviation. The month effects are 12 calendar-month dummies (one dropped), as the text specifies.
+
+### Task 20 — `orchestrate_task_20`
+
+- **Inputs**: `df_sector_excess`, `df_mkt_excess`, `df_bernoulli` (all `pd.DataFrame`), `out_path: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`, keyword-only `sidecar_dir`, `allow_partial_universe: bool = False`, `run_id`, `allow_single_scope: bool = False`, `single_scope_context: str`.
+- **Process**: `fit_sector_panels_via_orchestrator` delegates the sector-level fit to Task 19 and checks the data-driven sector universe against 23; `build_table_3` attaches stars and the manuscript reference values; `persist_table_3` writes Table 3 (all sectors) and `table_3_notes.json`, which records sectors that lost or gained significance relative to Table 2.
+- **Outputs**: `Dict[str, Any]` with the orchestrator output, Table 3, paths, the recorded configuration and a `verdict` mapping.
+- **Transformation**: per-sector pooled fits become the published Table 3 of $\gamma_s$ and p-values.
+- **Research role**: Equation (9) at sector level (shown under Task 19); in the text, "many sectors continue to exhibit statistically significant negative coefficients".
+- **Equations**: Equation (9), shown under Task 19.
+- **Code/paper note**: inference inherits Task 19's Driscoll-Kraay deviation, so p-values need not match Table 3 even on identical data. Software and IT Services' positive sign is treated as the manuscript's documented exception.
+- **Failure mode**: a missing or empty artifact is FATAL.
+
+### Task 21 — `orchestrate_task_21`
+
+- **Inputs**: `df_sector_excess`, `df_mkt_excess`, `df_bernoulli` (all `pd.DataFrame`), `out_path: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`, keyword-only `sidecar_dir`, `run_id`, `allow_single_scope: bool = False`, `single_scope_context: str`.
+- **Process**: `fit_global_panel_via_orchestrator` runs Task 19 in global scope after a design audit (no sector dummies) and a row-count proof; `validate_global_gamma` compares $\Gamma$ with $-0.003$ (30% relative tolerance) and p with 0.0096; `attach_associational_caveat` adds the caveat field before the single atomic write.
+- **Outputs**: `Dict[str, Any]` with the orchestrator output, the record and the caveated record, pooled row count, paths, configuration and `verdict`.
+- **Transformation**: the fully pooled panel becomes one global climate coefficient $\Gamma$ with inference.
+- **Research role**: Equation (10); the result shows that "extreme temperature events represent a systematic physical risk factor".
+
+$$
+R_{s,k,t} - R_{f,t} = \alpha + \beta_{MKT}(R_{MKT,t} - R_{f,t}) + \Gamma B_{k,t} + \text{FE}_{\text{month}} + \text{FE}_{\text{continent}} + \epsilon_{s,k,t}
+$$
+
+- **Code/paper note**: Driscoll-Kraay inference as in Task 19. The associational caveat reflects the text's identification limits. The top-level `run_two_scope_panel_fe_driver` wraps Tasks 20 and 21 under one `run_id`; the pipeline stage itself is `orchestrate_task_21`.
+
+### Task 22 — `orchestrate_task_22`
+
+- **Inputs**: `ai: pd.Series` (AI by `firm_id`), `s: pd.DataFrame` ($S_{i,k}$), `market_caps: pd.Series`, `frozen_order: List[str]`, `out_path: Optional[Path] = None`, keyword-only `expected_order_hash`, `continents: Tuple[str, ...]`, `cap_snapshot_date: str = '2020-01-01'`, `seed: int = 42`.
+- **Process**: `build_ai_s_matrix` forms $AI_i \cdot S_{i,k}$ aligned to the frozen order (hash verified); `compute_numerators` computes $\sum_i w_i AI_i S_{i,k}$ as a matrix product; `normalize_numerators` divides by the total; `verify_alpha_homogeneity` checks degree-zero homogeneity at scale 2.5 on seeded Dirichlet draws; `persist_alpha_benchmark` writes the market-cap benchmark $\alpha$.
+- **Outputs**: `Dict[str, Any]` with the labelled exposure matrix, order hash, numerators, benchmark $\alpha$, homogeneity report, the three leading continental weights, the set-and-argmax flag, paths and `overall_passed`.
+- **Transformation**: firm weights become continental climate-normalised weights on the simplex.
+- **Research role**: Equation (12); for the MSCI-proxy benchmark, "Asia shows the most significant exposure".
+
+$$
+\alpha_k(\boldsymbol{w}) = \frac{\sum_{i=1}^N w_i \cdot AI_i \cdot S_{i,k}}{\sum_{k=1}^K \sum_{i=1}^N w_i \cdot AI_i \cdot S_{i,k}}
+$$
+
+- **Code/paper note**: faithful to (12). The "MSCI World" benchmark is the cap-weighted 120-firm universe at 2020-01-01, a proxy rather than index holdings. The strict Asia, North America, Europe ordering is logged but not gated.
+
+### Task 23 — `orchestrate_task_23`
+
+- **Inputs**: `alpha: pd.Series` (by continent), `prob_matrix: pd.DataFrame` (periods by continents), `tau: Optional[str] = None`, `out_path: Optional[Path] = None`, `benchmark_name: str = 'market_cap_weighted'`.
+- **Process**: `validate_continent_alignment` checks that both label sets equal the canonical six and reorders them; `compute_cre_scalar` evaluates the snapshot at the last period strictly before `tau` (or the latest period when `tau` is None); `compute_cre_series` evaluates all periods as one matrix-vector product; the two paths must agree; `persist_cre_series` writes the series, a per-period JSONL log and a provenance digest.
+- **Outputs**: `Dict[str, Any]` with the CRE series, the scalar snapshot, continent order, paths, pass flag, snapshot period and period count.
+- **Transformation**: fixed continental weights and time-varying probabilities become an expected-exposure series in $[0, 1]$.
+- **Research role**: Climate Risk Exposure, which "quantifies the expected average exposure of the portfolio to extreme climate events".
+
+$$
+\text{CRE}(\boldsymbol{w}, t) = \mathbb{E}\left[\sum_{k=1}^K \alpha_k(\boldsymbol{w}) B_{k,t}\right] = \sum_{k=1}^K \alpha_k(\boldsymbol{w}) \cdot p_{k,t}
+$$
+
+- **Code/paper note**: faithful. The CRE formula carries no printed number in the paper, so none is cited here; the code's docstrings use an implicit auto-numbered label that should not be relied on.
+
+### Task 24 — `orchestrate_task_24`
+
+- **Inputs**: `alpha: pd.Series`, `prob_matrix: pd.DataFrame`, `rho: pd.DataFrame` (labelled $6 \times 6$), `year_month: pd.Series | pd.DatetimeIndex | List[str]`, `cre_values: Optional[np.ndarray] = None`, `out_path: Optional[Path] = None`, keyword-only `strict: bool = True`.
+- **Process**: reindexes all inputs to canonical order; applies one probability-dust policy; validates $\rho$ (symmetry, unit diagonal, PSD with minimum eigenvalue at least $-10^{-8}$) and $\alpha$ (simplex); `build_covariance_matrix` builds $V = \operatorname{diag}(v)\, \rho\, \operatorname{diag}(v)$ with $v_k = \sqrt{p_k(1-p_k)}$; `compute_cev_series` evaluates all periods in one einsum contraction; `persist_cev_series` enforces $0 \le \text{CEV} \le 0.25$.
+- **Outputs**: `Dict[str, Any]` with `cev_series`, `first_covariance`, `covariance_proof`, `paths` and `overall_passed`.
+- **Transformation**: continental weights, probabilities and dependence become the variance of the portfolio's climate exposure over time.
+- **Research role**: Equation (16); "This metric quantifies the variance of the portfolio's climate exposure", with the covariance $\operatorname{Cov}(B_{k,t}, B_{j,t}) = \rho_{k,j}\sqrt{p_{k,t}(1 - p_{k,t})p_{j,t}(1 - p_{j,t})}$.
+
+$$
+\text{CEV}(\boldsymbol{w}, t) = \sum_{k=1}^K \alpha_k^2 p_{k,t}(1 - p_{k,t}) + 2\sum_{k < j} \alpha_k \alpha_j \rho_{k,j}\sqrt{p_{k,t}(1 - p_{k,t})p_{j,t}(1 - p_{j,t})}
+$$
+
+- **Code/paper note**: faithful to (16). The 0.25 upper bound is a derived property (simplex $\alpha$, PSD $\rho$, $p(1-p) \le 1/4$) rather than a manuscript statement. The PSD requirement is a code safeguard the text does not state.
+
+### Task 25 — `orchestrate_task_25`
+
+- **Inputs**: `p: float = UNIT_P` (0.3), `rho: float = UNIT_RHO` (0.2), `out_path: Optional[Path] = None`, keyword-only `output_dir: Optional[Path] = None`.
+- **Process**: `verify_idiosyncratic_numerics` checks the idiosyncratic closed form against direct enumeration at $K = 6$ and $K = 10{,}000$; `verify_systemic_numerics` checks the systemic closed form at $K = 6$ against the Task 24 CEV engine and an explicit 15-pair sum (agreement within 1e-12), and uses the exact algebraic identity at $K = 10{,}000$; `persist_asymptotic_markdown` writes the derivation and tables.
+- **Outputs**: `Dict[str, Any]` with the two verification tables, paths and the pass flag.
+- **Transformation**: homogeneous parameters $(p, \rho, K)$ become numerical evidence for the asymptotic decomposition of CEV.
+- **Research role**: Section 3's granularity argument; increasing $K$ "cannot completely eliminate the systemic risk arising from the underlying correlation structure of climate events". With $\alpha_k = 1/K$:
+
+$$
+\sum_{k=1}^K \left(\frac{1}{K}\right)^2 p(1 - p) = \frac{1}{K} p(1 - p)
+$$
+
+$$
+2\sum_{k < j} \frac{1}{K^2}\rho p(1 - p) = \left(1 - \frac{1}{K}\right)\rho p(1 - p)
+$$
+
+- **Code/paper note**: faithful. Both displays are unnumbered in the paper, and the code's auto-numbered labels for them are not manuscript numbers. The defaults $p = 0.3$ and $\rho = 0.2$ are illustrative code values.
+
+### Task 26 — `orchestrate_task_26`
+
+- **Inputs**: `prob_matrix: np.ndarray` $(T, 6)$, `rho: np.ndarray` $(6, 6)$, `alpha_mcap: np.ndarray` $(6,)$, `year_month: pd.Series | pd.DatetimeIndex | List[str]`, `out_dir: Optional[Path] = None`, keyword-only `report_only: bool = False`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `build_strategy_alpha_set` builds three artificial continental allocations: the cap-weighted benchmark, equal $\alpha_k = 1/6$, and inverse-risk $\alpha_{k,t} \propto 1/p_{k,t}$ renormalised at each $t$; `compute_strategy_cev_series` evaluates Equation (16) for each through the Task 24 engine and checks the ordering inverse $\le$ equal $\le$ benchmark at every $t$; `persist_strategy_cevs` and `render_figure_5` write the outputs.
+- **Outputs**: `Dict[str, Any]` with the strategy alphas, the three CEV series, paths and `overall_passed`, which includes the ranking verdict.
+- **Transformation**: three weighting schemes become three CEV trajectories and Figure 5.
+- **Research role**: Figure 5; "The equally-weighted climate portfolio consistently highlights a lower CEV compared to the MSCI World baseline", with inverse-risk weighting lowest.
+- **Equations**: Equation (16), shown under Task 24.
+- **Code/paper note**: the per-period hierarchy is FATAL by default (JC-cev-hierarchy-full), a stricter reading than the text's visual claim; `report_only=True` downgrades it. The benchmark is the 120-firm proxy, and the figure also locates the first mean-probability crossing of 0.5 against the text's approximate 2010 turning point.
+
+### Task 27 — `orchestrate_task_27`
+
+- **Inputs**: `prob_matrix: np.ndarray` $(T, 6)$, `rho_empirical`, `rho_min_raw`, `rho_max_raw` (each `np.ndarray` $(6, 6)$), `year_month: pd.Series | pd.DatetimeIndex | List[str]`, `out_dir: Optional[Path] = None`, keyword-only `alpha: Optional[np.ndarray] = None` (cross-check only), `alpha_benchmark_path: Optional[Path] = None`, `config: Optional[Dict[str, Any]] = None`.
+- **Process**: `_load_msci_alpha_benchmark` loads Task 22's persisted benchmark $\alpha$; `build_stress_matrices` projects each candidate matrix to PSD by eigenvalue clipping; `compute_scenario_cevs` proves raw entrywise dominance, asserts $\text{CEV}(\rho_{\min}) \le \text{CEV}(\hat{\rho}) \le \text{CEV}(\rho_{\max})$ on raw matrices at every $t$, and reports the ordering after projection separately; `persist_scenario_cevs` and `render_figure_6` write the outputs.
+- **Outputs**: `Dict[str, Any]` with scenario matrices, scenario series, paths, the alpha provenance record and the pass flag.
+- **Transformation**: three dependence scenarios become three CEV paths for the benchmark portfolio.
+- **Research role**: Figure 6 stress test using the bounds of Equations (5) and (6) in the systemic term of Equation (16); "an increase in correlation leads to a significant rise in climate risk".
+- **Equations**: Equations (5), (6) (Task 13) and (16) (Task 24).
+- **Code/paper note**: the PSD projection is not in the manuscript. It is needed because matrices assembled from pairwise bounds need not be valid correlation matrices, and clipping is not monotone. The code therefore publishes the ordering on raw matrices and the magnitudes on projected ones (JC-raw-envelope-projected-magnitude).
+
+### Task 28 — `orchestrate_task_28`
+
+- **Inputs**: `monthly: pd.DataFrame` (firm by `year_month` returns), `daily: pd.DataFrame` (long daily returns), `tau: str = DEFAULT_TAU` ('2020-01-01'), `out_dir: Optional[Path] = None`.
+- **Process**: `slice_rolling_monthly_window` keeps the 60 months from $\tau - 60$ to $\tau - 1$; `build_daily_wide_matrix` pivots the half-open five-year daily window before $\tau$ into a $T_{daily} \times 120$ matrix; `compute_expected_returns` takes per-firm arithmetic means; `compute_sample_covariance` applies listwise deletion and a scale-relative PSD check; `persist_rolling_estimates` writes both estimates.
+- **Outputs**: `Dict[str, Any]` with the anchor, $\boldsymbol{r}_\tau$ (length 120), the raw $S_\tau$ ($120 \times 120$), the missing-month report, paths and the overall flag.
+- **Transformation**: return histories become the point-in-time moment inputs of $f_1$ and $f_2$ in (19a).
+- **Research role**: Section 5; "The expected returns are calculated as the mean of the monthly returns over the preceding five years", with the covariance from daily returns over the same look-back.
+- **Equations**: supplies $\boldsymbol{r}$ and the raw $\boldsymbol{\Sigma}$ of $f_1(\boldsymbol{w}) = -\boldsymbol{w}^\top \boldsymbol{r}$ and $f_2(\boldsymbol{w}) = \boldsymbol{w}^\top \boldsymbol{\Sigma}\boldsymbol{w}$.
+- **Code/paper note**: faithful in window design; listwise deletion across 120 firms on different exchange calendars can drop many days, and the dropped fraction is logged. Frequency scaling is not applied, since the manuscript specifies none.
+
+### Task 29 — `orchestrate_task_29`
+
+- **Inputs**: `s_tau: pd.DataFrame` (sample covariance), `daily_wide: pd.DataFrame`, `tau: str = DEFAULT_TAU` ('2020-01-01'), `out_dir: Optional[Path] = None`.
+- **Process**: `build_shrinkage_target` sets $F = (\operatorname{tr}(S_\tau)/N) I$; `estimate_ledoit_wolf_shrinkage` computes the Ledoit-Wolf (2004) closed-form $\delta^{\ast}$ with divisor $T - 1$; `enforce_conditioning_number` raises $\delta$ in fixed steps until $\lambda_{\min} > 0$ and $\kappa_2 < 1000$; `persist_shrunk_estimates` writes the matrix and a sidecar recording $\delta^{\ast}$, the applied $\delta$, $\kappa$ before and after, and $\lambda_{\min}$.
+- **Outputs**: `Dict[str, Any]` with the target, intensities, conditioned $\boldsymbol{\Sigma}_\tau$, conditioning scalars, paths and the overall flag.
+- **Transformation**: a noisy sample covariance becomes a well-conditioned covariance for $f_2$.
+- **Research role**: the Section 4 remark: "we apply the Ledoit-Wolf shrinkage method" to "reduce the condition number of the covariance matrix, calculated over the entire available dataset, to below 1,000". The shrinkage estimator (Ledoit and Wolf, 2004) is:
+
+$$
+\boldsymbol{\Sigma} = (1 - \delta^{\ast}) S + \delta^{\ast} F
+$$
+
+- **Code/paper note**: the scaled-identity target is a documented choice among three candidate targets (scaled identity, constant correlation, single index). Increasing $\delta$ beyond $\delta^{\ast}$ is a code addition. The manuscript conditions a full-sample matrix, whereas the code conditions each rolling-window matrix.
+
+### Task 30 — `run_mopso_optimization`
+
+- **Inputs**: `r: np.ndarray` (120,), `sigma: np.ndarray` (120, 120), `alpha_fn: Callable[[np.ndarray], np.ndarray]`, `p_t: np.ndarray` (6,), `rho_matrix: np.ndarray` (6, 6), `mopso_params: Dict[str, Any]`, `seed: int`, keyword-only `third_objective_fn: Optional[Callable[[np.ndarray, np.ndarray], float]] = None`.
+- **Process**: validates inputs (`validate_mopso_inputs`) and seeds one PCG64 stream; evaluates $[-\boldsymbol{w}^\top \boldsymbol{r},\ \boldsymbol{w}^\top \boldsymbol{\Sigma} \boldsymbol{w},\ \text{CEV}]$ in batch (`evaluate_population`); repairs positions with Duchi (2008) simplex projection (`enforce_simplex`); maintains repository and grid (`pareto_dominance_filter`, `deduplicate_repository`, `build_leader_grid`, `select_leader`, `prune_repository`).
+- **Outputs**: `Dict[str, Any]` with the Pareto archive weights and objectives, the convergence trace and the optimiser-only `runtime_seconds`.
+- **Transformation**: point-in-time inputs become a non-dominated set of long-only, fully invested portfolios.
+- **Research role**: Algorithm 1 (Appendix C.2) solving (19a) to (19c); "MOPSO aims to identify the Pareto Front". Algorithm 1 as summarised from the paper:
+
+1. Initialise $N_{pop}$ particles within $(lb, ub)$ summing to 1, velocities 0, $pbest \gets objs$; set the repository to the non-dominated particles; build the grid with $N_{grid}$ cells per objective and inflation offset $dc = (s_{\max} - s_{\min}) \cdot \alpha$.
+2. For $t = 0$ to $iter - 1$, set the mutation probability $pm \gets (1 - t/(iter - 1))^{1/\mu}$.
+3. For each particle $i$, choose $gbest\_pos \gets rep[\operatorname{select\_gbest}(\beta)]$ and update $vel[i] \gets \omega\, vel[i] + c_1 r_1 (gbest\_pos - pos[i]) + c_2 r_2 (pbest\_pos[i] - pos[i])$.
+4. Set $pos[i] \gets pos[i] + vel[i]$, restore the bounds and the unit sum, and recompute $objs[i]$.
+5. If $\operatorname{rand}() < pm$, mutate; accept $new\_pos$ if $new\_obj$ dominates $objs[i]$, or if $objs[i]$ does not dominate $new\_obj$ and $\operatorname{rand}() < 0.5$.
+6. Replace the personal best under the same dominance-or-coin rule.
+7. Extend the repository, remove dominated solutions, rebuild the grid, and delete via $\operatorname{select\_deletion}(\gamma)$ while the repository holds more than $N_{rep}$ members; return the repository and its objectives.
+
+- **Code/paper note**: randomness is drawn in fixed per-generation blocks rather than per particle (JC-mopso-vectorized-draw-order), so streams differ from a literal loop while the rules do not. `mutate` is undefined in the paper; the code uses fixed Gaussian noise ($\sigma = 0.05$) plus projection. The grid is rebuilt again after pruning. The text calls $c_1$ social, matching the formula, whereas Table C.10 labels $c_1$ personal; this is immaterial at $c_1 = c_2$.
+
+### Task 31 — `orchestrate_task_31`
+
+- **Inputs**: `monthly`, `daily`, `ai_s`, `p_hat_panel`, `rho` (labelled `pd.DataFrame`s), `frozen_order: List[str]`, `tau: str = ANCHOR_TAU` ('2020-01-01'), `mopso_params: Optional[Dict[str, Any]] = None`, `seed: int = DEFAULT_ANCHOR_SEED` (1), `out_dir: Optional[Path] = None`, `figure_path: Optional[Path] = None`, keyword-only `expected_order_hash: Optional[str]`, `continent_order: Tuple[str, ...]`, `manifest_path: Optional[Path]`, `calibrated_hardware_ratio: Optional[float]`, `calibrated_hardware_ratio_provenance: Optional[Dict[str, Any]]`, `selected_config_path: Optional[str]`.
+- **Process**: `assemble_mopso_inputs` builds $\boldsymbol{r}_\tau$ and $\boldsymbol{\Sigma}_\tau$ (Tasks 28 and 29), $\alpha(\boldsymbol{w})$ through $AI \cdot S$, and $p$ from the month before $\tau$ (2019-12), with order, hash and PSD proofs; `execute_anchor_mopso` runs Task 30 and compares its runtime with 217.39 s (speed ratio, or a calibrated ratio from an independent run); `persist_pareto_archive` and `render_pareto_figure7` write the outputs.
+- **Outputs**: `Dict[str, Any]` with the input snapshot, execution record, archive paths, Figure 7 report and the overall flag.
+- **Transformation**: anchor-date data become the three-objective Pareto frontier at 2020-01-01.
+- **Research role**: Figure 7, "the resulting three-dimensional Pareto frontier computed at January 1, 2020", solving (19a) to (19c):
+
+$$
+\min_{\boldsymbol{w}} \quad F(\boldsymbol{w}) = [f_1(\boldsymbol{w}), f_2(\boldsymbol{w}), f_3(\boldsymbol{w})]^\top
+$$
+
+$$
+\sum_{i=1}^{120} w_i = 1, \qquad w_i \ge 0, \quad \forall i = 1, \dots, 120
+$$
+
+- **Code/paper note**: here $f_1 = -\boldsymbol{w}^\top \boldsymbol{r}$, $f_2 = \boldsymbol{w}^\top \boldsymbol{\Sigma}\boldsymbol{w}$ and $f_3 = \text{CEV}(\boldsymbol{w})$, as in the text. The month before $\tau$ follows Section 5 of the paper. A hardware ratio derived from this same run is refused as circular.
+
+### Task 32 — `orchestrate_task_32`
+
+- **Inputs**: `pareto_weights: np.ndarray` (M, 120), `pareto_objectives: np.ndarray` (M, 3), `tau: str = DEFAULT_TAU` ('2020-01-01'), `pareto_weights_mv: Optional[np.ndarray] = None`, `out_dir: Optional[Path] = None`, `pareto_objectives_mv: Optional[np.ndarray] = None`, keyword-only `mopso_inputs`, `mopso_params`, `seed`.
+- **Process**: `compute_active_weights` counts weights $\ge 10^{-3}$ per portfolio, by variance quintile, against the 22 and 55 reference values; when absent, the mean-variance comparator is produced by Task 30 with a zero third objective under the same inputs and seed; `compute_jaccard_distances` builds the $M \times M$ matrix in chunks; `render_jaccard_heatmap` draws Figures 8a and 8b; `render_variance_slices` draws the return-CEV parabolic fits (Figure 9).
+- **Outputs**: `Dict[str, Any]` with active counts, comparator summary (22 versus 14), Jaccard matrices, slices, paths, notes, `overall_passed` and `degraded`.
+- **Transformation**: frontier weights become concentration, dissimilarity and trade-off diagnostics.
+- **Research role**: Section 4.3; "the average number of active positions is 22", versus "the average number of non-zero weights drops to 14" without CEV; Equation (20):
+
+$$
+d_J(\boldsymbol{x}, \boldsymbol{y}) = 1 - \frac{\sum_i \min(x_i, y_i)}{\sum_i \max(x_i, y_i)}
+$$
+
+- **Code/paper note**: faithful to (20) and to the $10^{-3}$ threshold. The mean-variance comparator is a three-objective run with a constant third objective, equivalent in dominance to the two-objective problem. The 22, 55 and 14 targets are reproduction flags, not gates.
+
+### Task 33 — `orchestrate_task_33`
+
+- **Inputs**: `r: np.ndarray` (120,), `sigma: np.ndarray` (120, 120), `alpha_fn: Callable`, `p_t: np.ndarray` (6,), `rho_matrix: np.ndarray` (6, 6), `template_params: Dict[str, Any]`, `seeds: Tuple[int, ...] = DEFAULT_SWEEP_SEEDS` (seeds 1 to 10), `cells: Optional[List[Dict[str, int]]] = None`, `out_dir: Optional[Path] = None`, `log_dir: Optional[Path] = None`.
+- **Process**: `build_sweep_grid` builds the factorial grid $\operatorname{Iter} \in \lbrace 200, 300, 400 \rbrace$, $N_{pop} \in \lbrace 200, 500, 600 \rbrace$, $N_{rep} \in \lbrace 100, 200, 400 \rbrace$; `run_hyperparameter_sweep` runs Task 30 for every cell and seed with per-cell checkpoints, recording runtime, hypervolume and spacing; `build_sweep_table` and `persist_sweep_table` tabulate the 27 rows with dispersion statistics.
+- **Outputs**: `Dict[str, Any]` with grid, sweep results, table, paths, per-cell success counts and the overall flag (at least one successful seed per cell).
+- **Transformation**: one set of optimisation inputs becomes a 27-cell by 10-seed performance surface.
+- **Research role**: Section 4.3's calibration; "the algorithm is run for every possible combination of the aforementioned parameters", each averaged over 10 runs.
+- **Equations**: none numbered; hypervolume (Guerreiro et al.) and spacing (Schott) as the text describes them.
+- **Code/paper note**: the primary hypervolume and spacing are computed in a globally normalised unit cube with reference point $(1.1, 1.1, 1.1)$, which makes them comparable across cells but not with Tables 5 to 7's raw magnitudes. The manuscript does not state its reference point.
+- **Scope**: the seed ensemble matches Task 1's protocol $\lbrace 1, \dots, 10 \rbrace$.
+
+### Task 34 — `orchestrate_task_34`
+
+- **Inputs**: as Task 33 (`r`, `sigma`, `alpha_fn`, `p_t`, `rho_matrix`, `template_params`, `seeds`, `cells`, `out_dir`, `log_dir`), plus `config_path: str`, keyword-only `calibrated_hardware_ratio: Optional[float] = None` and `calibrated_hardware_ratio_provenance: Optional[Dict[str, Any]] = None`.
+- **Process**: `execute_sweep_grid` runs the grid with per-run logging; `verify_run_log_coverage` proves each (cell, seed) pair ran exactly once; `build_tables_5_6_7` splits the table by $\operatorname{Iter}$; `compare_against_references` compares with the manuscript tables (runtime only with an independently calibrated $h$); `select_mopso_configuration` applies a diminishing-returns rule in the order $N_{rep}$, $N_{pop}$, $\operatorname{Iter}$; `persist_selected_config` writes the choice and rationale.
+- **Outputs**: `Dict[str, Any]` with execution, Tables 5 to 7, comparison, selection, paths, notes and the overall flag.
+- **Transformation**: sweep results become Tables 5 to 7 and one selected hyperparameter triple.
+- **Research role**: the configuration $(\operatorname{Iter}, N_{pop}, N_{rep}) = (300, 500, 400)$ "is the one we deem most appropriate for our analysis".
+- **Equations**: none.
+- **Code/paper note**: the manuscript's selection is qualitative ("After some preliminary tests"); the code formalises it as a marginal-gain rule and treats disagreement with the anchor triple as FATAL. Partial grids defer tables and selection and document the deferral.
+
+### Task 35 — `orchestrate_task_35`
+
+- **Inputs**: `panels: Dict[str, pd.DataFrame]`, `universe`, `asset_intensity`, `revenue_shares`, `calendar`, `monthly_returns`, `realized_bernoulli`, `firm_continent_loadings` (all `pd.DataFrame`), `monthly_weights_fn: Optional[Callable[[pd.Timestamp, Dict[str, Any]], Dict[str, np.ndarray]]] = None`, `config: Optional[Dict[str, Any]] = None`, `output_dir: Optional[Path] = None`, keyword-only `log_dir: Optional[Path]`, `checkpoint_dir: Optional[Path]`, `selected_config_path: Optional[str]`, `include_initial: bool = False`.
+- **Process**: validates inputs and resolves first-business-day dates from 2020-01 to 2025-04; for each month $m$, refits Equation (3) up to $m - 1$ (`refit_logistic`), re-estimates means and daily covariance over the preceding 60 months (`compute_rolling_returns_and_cov`), applies shrinkage (`rolling_ledoit_wolf_shrinkage`), recomputes $\hat{\rho}$, runs the seeded MOPSO and selects strategies (`select_portfolios_from_frontier`), with per-month checkpoints.
+- **Outputs**: `Dict[str, Any]` with strategy weights and returns, realised exposures, cumulative returns, the performance-metric table and verdicts.
+- **Transformation**: point-in-time data become 64 monthly rebalanced allocations and their realised returns $\boldsymbol{w} \cdot \boldsymbol{r}(m)$ and exposures $\sum_k \alpha_k(\boldsymbol{w}) B_{k,m}$.
+- **Research role**: Section 5, where "the Pareto frontier is re-optimized running the MOPSO algorithm" each month and "we apply a min-max normalization to each objective" for the Table 8 tilts $(a, b, c)$.
+- **Equations**: Equations (3), (12), (16) and (19a) to (19c) are reused. The tilt rule is verbal in the text; the code minimises $a \tilde f_1 + b \tilde f_2 + c \tilde f_3$ over min-max-normalised archive columns.
+- **Code/paper note**: metrics use $r_f = 0$, Sharpe annualised by $\sqrt{12}$ by default, and a Sortino downside deviation per Sortino and Satchell (JC-sortino-satchell-primary). r-CRE is the mean and r-CEV the sample variance (ddof = 1) of the realised exposure. Returns are gross of costs, as the text states. The benchmark rows are built from the frozen universe.
+
+### Task 36 — `orchestrate_task_36`
+
+- **Inputs**: the Task 35 inputs (`panels`, `universe`, `asset_intensity`, `revenue_shares`, `calendar`, `monthly_returns`, `realized_bernoulli`, `firm_continent_loadings`, `monthly_weights_fn`, `config`), plus `reference_values: Optional[pd.DataFrame] = None`, `output_dir: Optional[Path] = None`, `figure_path: Optional[Path] = None`, keyword-only `log_dir: Optional[Path] = None`.
+- **Process**: `execute_backtest` runs the 64-month backtest through Task 35 and always writes `backtest_runtime.jsonl`; `build_table9` assembles eleven rows by six metrics and compares them cell by cell with the manuscript reference when one is supplied; `render_figure10` draws eleven cumulative wealth curves with a cost caveat.
+- **Outputs**: `Dict[str, Any]` with execution, Table 9, comparison, figure, disclosure, `reproduction_summary` and the passed flag.
+- **Transformation**: realised strategy paths become Table 9 (CAGR, Sharpe, Sortino, drawdown, r-CRE, r-CEV) and Figure 10.
+- **Research role**: Section 5 reporting; the text cautions that "this backtest does not account for transaction costs, bid-ask spreads, and in general rebalancing costs".
+- **Equations**: none new; the metric definitions are those of Task 35.
+- **Code/paper note**: Figure 10's caption in the paper says "ten evaluated strategies" while Table 9 lists eleven rows; the code plots eleven and documents the inconsistency.
+- **Scope**: the reference comparison is diagnostic and does not replace execution gates.
+
+### Task 37 — `orchestrate_task_37`
+
+- **Inputs**: `r: np.ndarray` (120,), `sigma: np.ndarray` (120, 120), `alpha_fn: Callable`, `p_t: np.ndarray` (6,), `rho_matrix: np.ndarray` (6, 6; accepted for interface symmetry, unused by CRE), `mopso_params: Dict[str, Any]`, `seed: int`, `out_dir: Optional[Path] = None`, `f3_evaluator: Optional[Callable[[np.ndarray, np.ndarray], float]] = None`, `n_intervals: int = DEFAULT_SLICE_INTERVALS` (5), keyword-only `firm_order: Optional[List[str]] = None`.
+- **Process**: `run_mopso_optimization_cre` runs the Task 30 engine with CRE as the third objective, rejects a CEV evaluator by identity, and proves on the archive that column 3 equals $\sum_k \alpha_k(\boldsymbol{w}) p_k$; `build_cre_diagnostics` computes Jaccard distances (Equation (20)) and variance-slice records; the frontier is persisted.
+- **Outputs**: `Dict[str, Any]` with `pareto_weights`, `pareto_objectives`, `jaccard`, `slices`, `diagnostics`, `artifacts`, `convergence_trace`, `runtime_seconds` and `passed`.
+- **Transformation**: the same inputs as Task 31 become a return-variance-CRE frontier.
+- **Research role**: the Appendix B variant, showing that "CRE acts as an additional dimension of risk".
+- **Equations**: (19a) to (19c) with $f_3(\boldsymbol{w}) = \text{CRE}(\boldsymbol{w}, t)$ (formula under Task 23), and Equation (20).
+- **Code/paper note**: CRE lies in $[0, 1]$ whereas CEV is bounded by $1/4$, which the docstring documents. The MOPSO engine and its deviations are inherited unchanged from Task 30.
+- **Scope**: persistence defaults to `results/`.
+
+### Task 38 — `orchestrate_task_38`
+
+- **Inputs**: `r_tau: np.ndarray`, `sigma_tau: np.ndarray`, `alpha_fn: Callable`, `p_tau: np.ndarray`, `rho_hat: np.ndarray`, `mopso_params: Dict[str, Any]`, `seed: int`, `out_dir: Optional[Path] = None`, `figure_dir: Optional[Path] = None`, keyword-only `cev_frontier: Optional[Dict[str, Any]]`, `parity_passed: Optional[bool]`, `task31_snapshot_paths: Optional[Dict[str, str]]`.
+- **Process**: `execute_cre_variant` runs Task 37 at the January 2020 anchor and, when snapshot paths are supplied, proves input parity with Task 31; `render_figure_b11a` draws the 3D CRE frontier; `render_figure_b11b` draws the variance-ordered Jaccard heatmap; `render_figure_b12` draws per-slice return-versus-CRE parabolic fits; `summarize_appendix_b` writes an evidence-only trend narrative, optionally against the CEV frontier.
+- **Outputs**: `Dict[str, Any]` with frontier, figure paths, `figure_B12_diagnostics`, summary, artifacts and `passed`, derived from the parity, figure and summary proofs.
+- **Transformation**: the CRE frontier becomes the Appendix B figures and a quantified return-CRE trend.
+- **Research role**: Appendix B; "Figure B.11a displays the 3D Pareto frontier", and B.12 shows that higher expected return is associated with higher CRE.
+- **Equations**: as Task 37.
+- **Code/paper note**: parity with Task 31 is verified only when `task31_snapshot_paths` is supplied; otherwise the manual `parity_passed` value, or "not verified", is reported. Every narrative sentence is generated from computed fields.
+
+### Task 39 — `orchestrate_task_39`
+
+- **Inputs**: `artifacts: Dict[str, Path]`, `reproduced: pd.DataFrame`, `references: pd.DataFrame`, `required_names: List[str]`, `mopso_config: Dict[str, Any]`, `seed_state: Dict[str, Any]`, `report_dir: Path`, `bundle_path: Path`, keyword-only `project_root: Optional[Path] = None`.
+- **Process**: `canonical_report_checklist` defines 10 tables and 15 figures; `assemble_report` copies the inventory with SHA-256 digests; `build_verification_report` compares reproduced and reference values over the coverage spine using equation fixtures (for example `bernoulli_bounds` for Equations (5) and (6)); `build_reproducibility_bundle` writes the environment record, configuration, sweep log and seeds into a tar.gz archive, with path containment enforced by `_assert_path_contained`.
+- **Outputs**: `Dict[str, Any]` with the reloaded persisted manifest, verification, `verdict_counts`, readme, bundle, gate results and `passed`.
+- **Transformation**: scattered artifacts become one verified, digest-stamped reproducibility package.
+- **Research role**: reproducibility engineering, including "Recording every implicit or ambiguous analytical decision to preserve transparency" and "Packaging of code and configuration so that any result can be regenerated".
+- **Equations**: none new; it verifies the implementations of the equations through fixtures.
+- **Code/paper note**: `passed` gates on package integrity only. Reproduction mismatches against the manuscript are reported in `verdict_counts` and do not fail the stage.
+
+### Task 40 — `run_research_pipeline`
+
+- **Inputs**: `stage_inputs: Mapping[int, Mapping[str, Any]]` (per-task keyword arguments), `config: Optional[Mapping[str, Any]] = None`, `out_dir: Optional[str] = None`, `stages: Optional[List[int]] = None`, `fail_fast: bool = True`, and two legacy string parameters `task_dir` and `package` that the notebook's namespace-based stage lookup only type-checks and never uses to locate a stage (defaults as shown in the Task 40 cell).
+- **Process**: `resolve_pipeline_stages` fixes the canonical 38-stage order (Tasks 1 to 39 without 30); `validate_pipeline_inputs` checks the per-stage keyword arguments against the shared configuration; `execute_pipeline_stages` resolves each `orchestrate_task_N` lazily from the notebook namespace (`load_stage_orchestrator`) and runs it once with monotonic timing; `build_pipeline_manifest` and `persist_pipeline_manifest` record the run.
+- **Outputs**: `Dict[str, Any]` with `stages` (artifacts keyed `task_N`), `manifest` and the overall `passed` flag.
+- **Transformation**: one configuration and a map of stage inputs become the complete set of artifacts from raw temperature to backtest.
+- **Research role**: the top-level orchestrator, realising "Design of pipelines with typed inputs and outputs that decouple climate, regression, exposure, metric, optimization, and backtest components."
+- **Equations**: none directly; Equations (1) to (3), (5), (6), (8) to (12), (16), (19a) to (19c) and (20) run inside the stages.
+- **Code/paper note**: Task 30 contributes its MOPSO engine through reuse in Tasks 31, 33, 34, 37 and 38 rather than as a stage. With `fail_fast=False`, failures are collected in the manifest. Hardware-scaled manifest fields appear only when Task 31's anchor runtime is available.
+- **Failure mode**: type-contract breaches raise `TypeError`, rejected stage resolution or inputs raise `ValueError`, a failing stage under `fail_fast=True` raises `RuntimeError` with chained context, and an unloadable stage raises `ImportError`. Default output paths are relative to the current working directory, so ad-hoc callers must run from a scratch directory.
