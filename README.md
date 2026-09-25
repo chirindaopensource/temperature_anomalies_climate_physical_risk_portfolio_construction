@@ -325,7 +325,7 @@ In the backtest (2020-01-01 to 2025-04-30), the frontier is re-optimised on the 
 
 > **Registered divergence (Sharpe and Sortino annualisation).** The code computes Sharpe as $`12 \cdot \text{mean}(r) / \text{std}(r)`$ and Sortino with the same factor. The factor 12.0 comes from `config.yaml`, where the study-inputs specification chose it (`JC-md-sharpe_sortino_annualisation_factor`). The conventional annualisation multiplies by $`\sqrt{12}`$, so the reproduced ratios are $`\sqrt{12} \approx 3.46`$ times the conventional annualised values that the paper's Table 9 magnitudes suggest. The embedded usage example explains how to switch to $`\sqrt{12}`$.
 
-The image below illustrates the Inputs, Processes and Outputs (IPOs) of the proposed approach:
+The diagram below illustrates the Inputs, Processes and Outputs (IPOs) of the proposed approach:
 
 <div align="center">
   <a href="https://github.com/chirindaopensource/temperature_anomalies_climate_physical_risk_portfolio_construction/blob/main/temperature_anomalies_climate_physical_risk_portfolio_construction_ipo_main.png">
